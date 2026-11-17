@@ -266,7 +266,7 @@ async function renderVideo({ html, width, height, fps, duration, wordTimings, au
       captionsInstalled = await installCaptionsLayer(page, width, height, wordTimings);
       if (captionsInstalled) {
         log(`الترجمة الحركية مفعّلة: ${wordTimings.length} كلمة — الطبقة عند 72% من الارتفاع بمنطقة الأمان`);
-        await writeSummary(`**الترجمة الحركية**: مفعّلة — ${wordTimings.length} كلمة متزامنة (مقاطع 3–4 كلمات، تمييز الكلمة المنطوقة، RTL تلقائي للعربية) عند 72% من الارتفاع`);
+        await writeSummary(`**الترجمة الحركية**: مفعّلة — ${wordTimings.length} كلمة متزامنة (مقاطع 2–3 كلمات، تمييز الكلمة المنطوقة، RTL تلقائي للعربية) عند 72% من الارتفاع`);
       }
     }
 
@@ -548,8 +548,11 @@ function applyStageTransformInPage(spec) {
 /**
  * طبقة ترجمة احترافية موحدة فوق أي مشهد — منطقة الأمان لـ YouTube Shorts
  * (مركزها 72% من الارتفاع، بعيدة عن أزرار YouTube السفلية والجانبية):
- *  - مقاطع 3–4 كلمات متزامنة من wordTimings، والكلمة المنطوقة حاليًا مميزة
- *    بلون بارز #38bdf8 والبقية بتدرج شفافية.
+ *  - مقاطع 2–3 كلمات متزامنة من wordTimings، والكلمة المنطوقة حاليًا مميزة
+ *    بلون بارز #38bdf8 والبقية بتدرج شفافية. اللاحقات الملتصقة ('s، n't،
+ *    علامات الترقيم) تُدمج بالكلمة السابقة كي لا تظهر كلمات ملتصقة.
+ *  - الحجم يعادل 44px في اصطلاح تصميم 720 (≈6.1% من عرض الكادر النهائي) —
+ *    مريح للعين ولا يبدو سريعًا مع المقاطع القصيرة.
  *  - خلفية نصف شفافة أنيقة (زجاجية) تحفظ قراءة النص فوق أي مشهد.
  *  - RTL تلقائي للعربية (كشف محارف العربية) مع Noto Sans Arabic، وLTR مع
  *    Liberation Sans للإنجليزية — الخطان محقونّان مسبقًا بـ injectFonts.
@@ -558,8 +561,9 @@ function applyStageTransformInPage(spec) {
  */
 async function installCaptionsLayer(page, width, height, wordTimings) {
   try {
-    const fontSize = Math.round(Math.min(width * 0.05, height * 0.045));
-    const spec = { fontSize, timings: wordTimings };
+    // الحجم يُحسب داخل الصفحة من الـ viewport الفعلي (بعد ملء الكادر) كي
+    // تنطبق النسبة نفسها على كل الاستراتيجيات — انظر installCaptionsInPage
+    const spec = { targetW: width, targetH: height, timings: wordTimings };
     const ok = await page.evaluate(installCaptionsInPage, spec);
     return ok === true;
   } catch (e) {
@@ -580,7 +584,7 @@ function installCaptionsInPage(spec) {
         "display:flex;justify-content:center;align-items:center;z-index:2147483647;pointer-events:none;",
         "padding:0 6vw;text-align:center;}",
         "#meko-captions .meko-cap-line{display:inline-flex;flex-wrap:wrap;justify-content:center;align-items:center;",
-        "column-gap:.38em;row-gap:.12em;background:rgba(7,11,22,.62);backdrop-filter:blur(4px);",
+        "gap:.28em;background:rgba(7,11,22,.62);backdrop-filter:blur(4px);",
         "border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:.42em .95em;max-width:100%;line-height:1.4;}",
         "#meko-captions .meko-cap-w{font-weight:800;color:#ffffff;opacity:.5;text-shadow:0 2px 10px rgba(0,0,0,.55);white-space:pre-wrap;}",
         "#meko-captions .meko-cap-w.done{opacity:.9;}",
@@ -596,15 +600,37 @@ function installCaptionsInPage(spec) {
     }
     const layer = document.getElementById("meko-captions");
     if (!layer) return false;
+    // الحجم: يعادل 44px في اصطلاح تصميم 720 (≈6.1% من عرض الكادر النهائي).
+    // يُقاس من عرض الـ viewport الفعلي بعد ملء الكادر كي تتطابق النسبة عبر
+    // كل الاستراتيجيات: مشهد 1080 أصلي → 66px، ومشهد 720 عبر dsf → 44px.
+    const vw = Math.max(320, document.documentElement.clientWidth || spec.targetW || 1080);
+    const fontSize = Math.max(30, Math.min(88, Math.round(vw * 0.0611)));
     // الحجم متغير CSS على الطبقة يرثه كل السطور والكلمات
-    layer.style.setProperty("--meko-cap-size", `${spec.fontSize}px`);
+    layer.style.setProperty("--meko-cap-size", `${fontSize}px`);
 
-    // تقسيم التوقيتات إلى مقاطع 3–4 كلمات: مقطع جديد عند اكتمال العدد أو فجوة صمت > 0.9 ثانية
     const timings = (spec.timings || []).filter((w) => w && Number.isFinite(w.start) && Number.isFinite(w.end) && w.text);
+
+    // دمج اللاحقات الملتصقة بالكلمة السابقة: التوكن المكون من علامة ترقيم فقط
+    // أو لاحقة انكماشية ('s / n't / 're …) ليس كلمة مستقلة — تظهر في الفيديو
+    // كلمات مثل Here'ssomething إن تُركت منفصلة بلا مسافة صريحة بين الكلمات
+    const SUFFIX_RE = /^(?:[.,!?;:\u2026"'\u2019\u00ab\u00bb()\[\]{}%\-\u2013\u2014]+|n['\u2019]t|['\u2019][a-z]{1,3})$/i;
+    const units = [];
+    for (const w of timings) {
+      const prev = units.length ? units[units.length - 1] : null;
+      if (prev && SUFFIX_RE.test(w.text)) {
+        prev.text += w.text; // لصق اللاحقة بالكلمة السابقة مع مدّ نافذة التمييز
+        prev.end = Math.max(prev.end, w.end);
+      } else {
+        units.push({ text: w.text, start: w.start, end: w.end });
+      }
+    }
+
+    // تقسيم الوحدات إلى مقاطع 2–3 كلمات كحد أقصى: مقطع جديد عند اكتمال العدد
+    // أو فجوة صمت > 0.9 ثانية — مقاطع أقصر = قراءة مريحة لا تبدو سريعة
     const chunks = [];
     let cur = null;
-    for (const w of timings) {
-      if (!cur || cur.words.length >= 4 || w.start - cur.words[cur.words.length - 1].end > 0.9) {
+    for (const w of units) {
+      if (!cur || cur.words.length >= 3 || w.start - cur.words[cur.words.length - 1].end > 0.9) {
         cur = { words: [w], start: w.start, end: w.end };
         chunks.push(cur);
       } else {
@@ -635,9 +661,11 @@ function installCaptionsInPage(spec) {
       const spans = hit.words
         .map((w) => {
           const cls = t >= w.start && t < w.end ? "on" : t >= w.end ? "done" : "next";
-          return `<span class="meko-cap-w ${cls}" style="font-size:var(--meko-cap-size,${spec.fontSize}px)">${esc(w.text)}</span>`;
+          return `<span class="meko-cap-w ${cls}" style="font-size:var(--meko-cap-size,${fontSize}px)">${esc(w.text)}</span>`;
         })
-        .join("");
+        // مسافة صريحة بين كل كلمة وأخرى — شبكة الأمان إن لم تُطبَّق flex،
+        // وفي flex تعمل gap:.28em على الفصل البصري المنتظم
+        .join(" ");
       lay.innerHTML = `<div class="meko-cap-line">${spans}</div>`;
     };
     window.__mekoUpdateCaptions(spec.timings && timings.length ? timings[0].start : 0);

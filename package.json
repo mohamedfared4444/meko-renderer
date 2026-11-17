@@ -1,0 +1,17 @@
+{
+  "name": "meko-renderer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "عامل الرندر الكامل لفيديو الأنيميشن البرمجي على GitHub Actions — FHD 30fps خارج قيود Vercel، يُطلق من Meko عبر workflow_dispatch",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "render": "node scripts/render-code-video.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "puppeteer-core": "^23.0.0"
+  }
+}

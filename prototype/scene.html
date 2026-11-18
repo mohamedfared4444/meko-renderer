@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>VE2 Chocolate Line</title>
+<style>
+  @font-face { font-family:'Tajawal'; src:url('fonts/Tajawal-Regular.ttf') format('truetype'); font-weight:400; }
+  @font-face { font-family:'Tajawal'; src:url('fonts/Tajawal-Bold.ttf') format('truetype'); font-weight:700; }
+  html,body { margin:0; padding:0; width:1080px; height:1920px; overflow:hidden; background:#0b0910; }
+  #stage { position:fixed; inset:0; width:1080px; height:1920px; }
+  svg { display:block; }
+  text { font-family:'Tajawal', sans-serif; text-rendering: geometricPrecision; }
+  .ar { direction:rtl; unicode-bidi:isolate; }
+</style>
+</head>
+<body>
+<div id="stage">
+<svg id="world" viewBox="0 0 1080 1920" width="1080" height="1920" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- screen-space viewport clip: nothing outside the frame can ever leak (stray-element guard) -->
+    <clipPath id="viewClip"><rect x="0" y="0" width="1080" height="1920"/></clipPath>
+    <!-- world bounds: world cannot paint outside its own extent -->
+    <clipPath id="worldClip"><rect id="worldClipRect" x="-300" y="-2600" width="5200" height="6300"/></clipPath>
+
+    <!-- pipe interior: liquid stream may ONLY exist inside this clip (Fix 2) -->
+    <clipPath id="pipeInteriorClip"><rect id="pipeInteriorRect" x="0" y="0" width="0" height="0"/></clipPath>
+    <!-- funnel window: liquid level visible only inside funnel window -->
+    <clipPath id="funnelWindowClip"><rect id="funnelWindowRect" x="0" y="0" width="0" height="0"/></clipPath>
+    <!-- cooling tunnel interior -->
+    <clipPath id="tunnelInteriorClip"><rect id="tunnelInteriorRect" x="0" y="0" width="0" height="0"/></clipPath>
+    <!-- roaster cutaway window -->
+    <clipPath id="roasterWindowClip"><circle id="roasterWindowCircle" cx="0" cy="0" r="0"/></clipPath>
+    <!-- grinder cutaway window -->
+    <clipPath id="grinderWindowClip"><rect id="grinderWindowRect" x="0" y="0" width="0" height="0"/></clipPath>
+    <!-- tank cutaway window -->
+    <clipPath id="tankWindowClip"><rect id="tankWindowRect" x="0" y="0" width="0" height="0"/></clipPath>
+    <!-- mold fill window -->
+    <clipPath id="moldFillClipA"><rect x="0" y="0" width="0" height="0"/></clipPath>
+    <clipPath id="moldFillClipB"><rect x="0" y="0" width="0" height="0"/></clipPath>
+    <clipPath id="moldFillClipC"><rect x="0" y="0" width="0" height="0"/></clipPath>
+
+    <linearGradient id="gWall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d1420"/><stop offset="1" stop-color="#150f18"/>
+    </linearGradient>
+    <linearGradient id="gFloor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#241a28"/><stop offset="1" stop-color="#1a121e"/>
+    </linearGradient>
+    <linearGradient id="gBelt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3340"/><stop offset="1" stop-color="#262030"/>
+    </linearGradient>
+    <linearGradient id="gSteel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5d6672"/><stop offset=".5" stop-color="#49525e"/><stop offset="1" stop-color="#39414c"/>
+    </linearGradient>
+    <linearGradient id="gCopper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#96602f"/><stop offset=".55" stop-color="#7c4c24"/><stop offset="1" stop-color="#5f3a1c"/>
+    </linearGradient>
+    <linearGradient id="gGreen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f8352"/><stop offset=".55" stop-color="#337043"/><stop offset="1" stop-color="#285a36"/>
+    </linearGradient>
+    <linearGradient id="gIce" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#41729b"/><stop offset=".55" stop-color="#35618a"/><stop offset="1" stop-color="#2a4f72"/>
+    </linearGradient>
+    <linearGradient id="gLiquid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7a4a26"/><stop offset="1" stop-color="#5a3319"/>
+    </linearGradient>
+    <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6d4526"/><stop offset=".5" stop-color="#5b361d"/><stop offset="1" stop-color="#492a15"/>
+    </linearGradient>
+    <radialGradient id="gLamp" cx=".5" cy="0" r="1">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity=".16"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gFrost" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#bfe3ff" stop-opacity=".05"/><stop offset=".5" stop-color="#bfe3ff" stop-opacity=".16"/><stop offset="1" stop-color="#bfe3ff" stop-opacity=".05"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ============ WORLD (camera-transformed) ============ -->
+  <g clip-path="url(#viewClip)">
+    <g id="camera">
+      <g id="worldRoot" clip-path="url(#worldClip)">
+        <g id="layer-bg"></g>
+        <g id="layer-belt-back"></g>
+        <g id="layer-machines-back"></g>
+        <g id="layer-products-back"></g>
+        <g id="layer-products"></g>
+        <g id="layer-machines-front"></g>
+        <g id="layer-effects"></g>
+        <g id="layer-labels"></g>
+      </g>
+    </g>
+  </g>
+
+  <!-- ============ SCREEN-SPACE UI (fixed relative to frame) ============ -->
+  <g clip-path="url(#viewClip)">
+    <!-- opening title: top third, front layer (Fix 3) -->
+    <g id="title-card"></g>
+    <!-- stage chips (scene labels) -->
+    <g id="stage-chip"></g>
+    <!-- machine name banners live in world space (layer-labels) -->
+    <!-- end card -->
+    <g id="end-card"></g>
+    <!-- hero bar (final reveal) -->
+    <g id="hero-bar"></g>
+    <!-- single-pop caption capsule -->
+    <g id="caption-root"></g>
+  </g>
+</svg>
+</div>
+<script src="timeline.js"></script>
+<script src="engine-world.js"></script>
+<script src="engine-captions.js"></script>
+<script src="engine-anim.js"></script>
+</body>
+</html>

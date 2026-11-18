@@ -1,0 +1,47 @@
+name: ve2-gemini-voice-samples
+
+# Voice evaluation samples for the isolated visual-engine-2 prototype branch.
+# The Google API key comes ONLY from the repo secret GEMINI_API_KEY —
+# it is injected as an env var into the Python process, never echoed,
+# never written to logs or files. The Python script itself redacts any
+# AIza… pattern from all output before printing.
+#
+# The run commits the generated MP3s back to THIS branch under
+# download/voice-samples-gemini/ so the sandbox can pull them.
+
+on:
+  push:
+    branches: [visual-engine-2-prototype]
+    paths:
+      - '.github/workflows/ve2-voice-samples.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate 4 Gemini TTS samples (Puck / Orus / Charon / Kore)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VE2_VOICE_OUT: download/voice-samples-gemini
+        run: |
+          python3 tools/gemini_tts_samples.py
+
+      - name: Commit samples back to the branch
+        if: success()
+        run: |
+          git config user.name "ve2-bot"
+          git config user.email "ve2-bot@users.noreply.github.com"
+          git add download/voice-samples-gemini/
+          if git diff --cached --quiet; then
+            echo "No new samples to commit."
+          else
+            git commit -m "add gemini tts voice evaluation samples (4 voices)"
+            git push
+          fi

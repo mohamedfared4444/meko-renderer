@@ -1,0 +1,62 @@
+name: ve2-gemini-voice-top5
+
+# FINAL top-5 narrator voice comparison for the isolated visual-engine-2
+# prototype branch (Enzo / Fenrir / Algenib / Sadaltager / Charon) with the
+# enhanced documentary-creator director's note.
+#
+# The Google API key comes ONLY from the repo secret GEMINI_API_KEY —
+# it is injected as an env var into the Python process, never echoed,
+# never written to logs or files. The Python script itself redacts any
+# AIza… pattern from all output before printing.
+#
+# The run commits the generated MP3s + report.json back to THIS branch
+# under download/voice-samples-top5/ so the sandbox can pull them.
+
+on:
+  push:
+    branches: [visual-engine-2-prototype]
+    paths:
+      - '.github/workflows/ve2-voice-top5.yml'
+      - 'tools/gemini_tts_top5.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg (not preinstalled on current runners)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Generate top-5 Gemini TTS samples (Enzo w/ fallback chain + 4 voices)
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VE2_VOICE_OUT: download/voice-samples-top5
+        run: |
+          python3 tools/gemini_tts_top5.py
+
+      - name: Commit samples back to the branch
+        if: success()
+        run: |
+          git config user.name "ve2-bot"
+          git config user.email "ve2-bot@users.noreply.github.com"
+          if [ -d download/voice-samples-top5 ] && \
+             [ -n "$(ls -A download/voice-samples-top5 2>/dev/null)" ]; then
+            git add download/voice-samples-top5/
+            if git diff --cached --quiet; then
+              echo "No new samples to commit."
+            else
+              git commit -m "add gemini tts top-5 narrator voice comparison samples"
+              git push
+            fi
+          else
+            echo "No output directory — nothing to commit."
+          fi

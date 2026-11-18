@@ -1,0 +1,131 @@
+{
+  "generated_at_utc": "2026-11-18T20:24:54Z",
+  "purpose": "final top-5 narrator voice comparison (Egyptian Arabic)",
+  "prompt": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: \"النهارده هنشوف الشوكولاتة بتتعمل إزاي من الصفر! الحكاية بتبدأ من حبوب الكاكاو الخام، بتتحمص في أفران خاصة لحد ما ريحتها الغنية تطلع، وبعدين بتتطحن وتتحول لعجينة شوكولاتة ناعمة.\"",
+  "models_visible_tts": [
+    "gemini-2.5-flash-preview-tts",
+    "gemini-2.5-pro-preview-tts",
+    "gemini-3.1-flash-tts-preview",
+    "gemini-3.8-flash-tts",
+    "gemini-3.8-flash-lite-tts"
+  ],
+  "enzo_model_chain": [
+    "gemini-2.5-flash-preview-tts",
+    "gemini-3.1-flash-tts-preview",
+    "gemini-3.8-flash-tts",
+    "gemini-2.5-pro-preview-tts"
+  ],
+  "voices": [
+    {
+      "file": "top1_Enzo.mp3",
+      "requested_voice": "Enzo",
+      "status": "OK",
+      "model": "gemini-3.8-flash-tts",
+      "voice": "Enzo",
+      "attempts": [
+        {
+          "model": "gemini-2.5-flash-preview-tts",
+          "voice": "Enzo",
+          "error": "unsupported_voice: {\"_error_body\": \"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"Voice name Enzo is not supported. Allowed voice names are: achernar, achird, algenib, algieba, alnilam, aoede, autonoe, callirrhoe, charon, despina, enceladus, erinome, fenrir, gacrux, iapetus, kore, laomedeia, leda, orus, pu"
+        },
+        {
+          "model": "gemini-3.1-flash-tts-preview",
+          "voice": "Enzo",
+          "error": "unsupported_voice: {\"_error_body\": \"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 400,\\n    \\\"message\\\": \\\"No matching speaker voice found for name: Enzo and language:\\\",\\n    \\\"status\\\": \\\"INVALID_ARGUMENT\\\"\\n  }\\n}\\n\"}"
+        },
+        {
+          "model": "gemini-3.8-flash-tts",
+          "voice": "Enzo",
+          "error": null
+        }
+      ],
+      "actual_voice": "Enzo",
+      "duration_s": 16.48,
+      "sample_rate": 24000,
+      "mean_volume_db": -21.4,
+      "size_bytes": 142508,
+      "probe_ok": true
+    },
+    {
+      "file": "top2_Fenrir.mp3",
+      "requested_voice": "Fenrir",
+      "status": "OK",
+      "model": "gemini-2.5-flash-preview-tts",
+      "voice": "Fenrir",
+      "attempts": [
+        {
+          "model": "gemini-2.5-flash-preview-tts",
+          "voice": "Fenrir",
+          "error": null
+        }
+      ],
+      "actual_voice": "Fenrir",
+      "duration_s": 14.29,
+      "sample_rate": 24000,
+      "mean_volume_db": -16.2,
+      "size_bytes": 135164,
+      "probe_ok": true
+    },
+    {
+      "file": "top3_Algenib.mp3",
+      "requested_voice": "Algenib",
+      "status": "OK",
+      "model": "gemini-2.5-flash-preview-tts",
+      "voice": "Algenib",
+      "attempts": [
+        {
+          "model": "gemini-2.5-flash-preview-tts",
+          "voice": "Algenib",
+          "error": null
+        }
+      ],
+      "actual_voice": "Algenib",
+      "duration_s": 13.41,
+      "sample_rate": 24000,
+      "mean_volume_db": -16.5,
+      "size_bytes": 123788,
+      "probe_ok": true
+    },
+    {
+      "file": "top4_Sadaltager.mp3",
+      "requested_voice": "Sadaltager",
+      "status": "OK",
+      "model": "gemini-2.5-flash-preview-tts",
+      "voice": "Sadaltager",
+      "attempts": [
+        {
+          "model": "gemini-2.5-flash-preview-tts",
+          "voice": "Sadaltager",
+          "error": null
+        }
+      ],
+      "actual_voice": "Sadaltager",
+      "duration_s": 17.09,
+      "sample_rate": 24000,
+      "mean_volume_db": -21.8,
+      "size_bytes": 147404,
+      "probe_ok": true
+    },
+    {
+      "file": "top5_Charon.mp3",
+      "requested_voice": "Charon",
+      "status": "OK",
+      "model": "gemini-2.5-flash-preview-tts",
+      "voice": "Charon",
+      "attempts": [
+        {
+          "model": "gemini-2.5-flash-preview-tts",
+          "voice": "Charon",
+          "error": null
+        }
+      ],
+      "actual_voice": "Charon",
+      "duration_s": 15.81,
+      "sample_rate": 24000,
+      "mean_volume_db": -17.1,
+      "size_bytes": 161900,
+      "probe_ok": true
+    }
+  ],
+  "supported_voices_from_api_errors": []
+}

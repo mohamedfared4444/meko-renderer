@@ -13,13 +13,17 @@ video = d["video"]
 scenes = d["scenes"]
 segments = []
 for s in d["segments"]:
-    segments.append({
+    seg = {
         "id": s["id"],
         "text": s["text"],
         "placement": round(s["placement"], 3),
         "endsAt": round(s["ends_at"], 3),
         "words": [{"w": w["w"], "t0": round(w["t0"], 3), "t1": round(w["t1"], 3)} for w in s["words"]],
-    })
+    }
+    # explicit caption-group rhythm override (e.g. seg7 end-card beats)
+    if s.get("groups"):
+        seg["groups"] = s["groups"]
+    segments.append(seg)
 
 payload = {"video": video, "scenes": scenes, "segments": segments}
 js = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))

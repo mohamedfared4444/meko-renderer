@@ -40,7 +40,6 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VE2_VOICE_OUT: download/ve2-narration-enzo
-          VE2_ONLY_SEG: seg6
         run: |
           python3 tools/gemini_tts_segments.py
 

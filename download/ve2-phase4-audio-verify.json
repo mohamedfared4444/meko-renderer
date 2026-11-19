@@ -1,0 +1,320 @@
+{
+  "phase": 4,
+  "windows": [],
+  "processing": [
+    {
+      "id": "seg1",
+      "raw_dur": 3.801,
+      "edge_trim": [
+        0.215,
+        0.001
+      ],
+      "processed_dur": 3.666
+    },
+    {
+      "id": "seg2",
+      "raw_dur": 6.281,
+      "edge_trim": [
+        0.215,
+        0.001
+      ],
+      "processed_dur": 6.146
+    },
+    {
+      "id": "seg3",
+      "raw_dur": 8.841,
+      "edge_trim": [
+        0.275,
+        0.001
+      ],
+      "processed_dur": 8.646
+    },
+    {
+      "id": "seg4",
+      "raw_dur": 8.161,
+      "edge_trim": [
+        0.29,
+        0.001
+      ],
+      "processed_dur": 7.951
+    },
+    {
+      "id": "seg5",
+      "raw_dur": 7.641,
+      "edge_trim": [
+        0.355,
+        0.001
+      ],
+      "pause_keep": 0.22,
+      "pause_removed": 0.815,
+      "processed_dur": 6.551
+    },
+    {
+      "id": "seg6",
+      "raw_dur": 6.721,
+      "edge_trim": [
+        0.335,
+        0.001
+      ],
+      "processed_dur": 6.466
+    },
+    {
+      "id": "seg7",
+      "raw_dur": 6.161,
+      "edge_trim": [
+        0.275,
+        0.001
+      ],
+      "pause_keep": 0.24,
+      "pause_removed": 0.58,
+      "processed_dur": 5.386
+    }
+  ],
+  "placements": [
+    {
+      "id": "seg1",
+      "start": 1.6,
+      "end": 5.266,
+      "dur": 3.666
+    },
+    {
+      "id": "seg2",
+      "start": 5.986,
+      "end": 12.132,
+      "dur": 6.146
+    },
+    {
+      "id": "seg3",
+      "start": 14.939,
+      "end": 23.585,
+      "dur": 8.646
+    },
+    {
+      "id": "seg4",
+      "start": 26.392,
+      "end": 34.343,
+      "dur": 7.951
+    },
+    {
+      "id": "seg5",
+      "start": 37.15,
+      "end": 43.701,
+      "dur": 6.551
+    },
+    {
+      "id": "seg6",
+      "start": 45.948,
+      "end": 52.414,
+      "dur": 6.466
+    },
+    {
+      "id": "seg7",
+      "start": 54.66,
+      "end": 60.046,
+      "dur": 5.386
+    }
+  ],
+  "gaps": {
+    "seg1->seg2": 0.72,
+    "seg2->seg3": 2.807,
+    "seg3->seg4": 2.807,
+    "seg4->seg5": 2.807,
+    "seg5->seg6": 2.247,
+    "seg6->seg7": 2.246,
+    "lead_in": 1.6,
+    "tail_out": 0.587
+  },
+  "verify": {
+    "sfx_raw_mean_db": -8.32,
+    "sfx_gain_db": -23.68,
+    "sfx_seed": 987126,
+    "narration_limited_speech_mean_db": -16.79,
+    "narration_limited_peak_dbfs": -2.0,
+    "music_gain_db": -19.32,
+    "mix_peak_dbfs": -1.54,
+    "aac_scale_db": 0.0,
+    "aac_decoded_peak_dbfs": -1.36,
+    "mix_duration": 60.633,
+    "mix_mean_db": -18.9,
+    "mix_max_db": -1.4,
+    "windows": [
+      {
+        "kind": "speech",
+        "win": [
+          1.9,
+          4.97
+        ],
+        "mean_db": -17.1,
+        "max_db": -1.8
+      },
+      {
+        "kind": "ambient",
+        "win": [
+          5.37,
+          5.89
+        ],
+        "mean_db": -34.0,
+        "max_db": -26.4
+      },
+      {
+        "kind": "speech",
+        "win": [
+          15.44,
+          23.09
+        ],
+        "mean_db": -17.8,
+        "max_db": -1.5
+      },
+      {
+        "kind": "speech",
+        "win": [
+          26.89,
+          33.84
+        ],
+        "mean_db": -17.3,
+        "max_db": -1.6
+      },
+      {
+        "kind": "ambient",
+        "win": [
+          34.54,
+          36.7
+        ],
+        "mean_db": -35.9,
+        "max_db": -26.1
+      },
+      {
+        "kind": "speech",
+        "win": [
+          37.45,
+          43.4
+        ],
+        "mean_db": -16.8,
+        "max_db": -1.7
+      },
+      {
+        "kind": "speech",
+        "win": [
+          46.25,
+          52.11
+        ],
+        "mean_db": -17.4,
+        "max_db": -1.7
+      },
+      {
+        "kind": "ambient",
+        "win": [
+          52.61,
+          54.46
+        ],
+        "mean_db": -33.9,
+        "max_db": -25.7
+      },
+      {
+        "kind": "ambient",
+        "win": [
+          0.05,
+          1.5
+        ],
+        "mean_db": -38.5,
+        "max_db": -26.7
+      },
+      {
+        "kind": "speech",
+        "win": [
+          54.96,
+          59.75
+        ],
+        "mean_db": -18.0,
+        "max_db": -1.7
+      }
+    ],
+    "boundary_gaps": [
+      {
+        "at": 14.35,
+        "label": "cut1 scene2 start",
+        "last_speech_end": 12.145,
+        "gap_s": 2.205,
+        "ok": true,
+        "next_speech_start": 15.015,
+        "resume_after_cut": 0.665
+      },
+      {
+        "at": 24.85,
+        "label": "cut2 scene3 start",
+        "last_speech_end": 23.595,
+        "gap_s": 1.255,
+        "ok": true,
+        "next_speech_start": 26.47,
+        "resume_after_cut": 1.62
+      },
+      {
+        "at": 36.9,
+        "label": "cut3 scene4 start",
+        "last_speech_end": 34.355,
+        "gap_s": 2.545,
+        "ok": true,
+        "next_speech_start": 37.23,
+        "resume_after_cut": 0.33
+      },
+      {
+        "at": 44.17,
+        "label": "cut4 scene5 start",
+        "last_speech_end": 43.715,
+        "gap_s": 0.455,
+        "ok": true,
+        "next_speech_start": 46.03,
+        "resume_after_cut": 1.86
+      },
+      {
+        "at": 54.4,
+        "label": "cut5 scene6 start",
+        "last_speech_end": 52.425,
+        "gap_s": 1.975,
+        "ok": true,
+        "next_speech_start": 54.74,
+        "resume_after_cut": 0.34
+      },
+      {
+        "at": 60.633,
+        "label": "video end",
+        "last_speech_end": 60.06,
+        "gap_s": 0.573,
+        "ok": true
+      }
+    ],
+    "segment_gaps": [
+      {
+        "from": "seg1",
+        "to": "seg2",
+        "gap_s": 0.72
+      },
+      {
+        "from": "seg2",
+        "to": "seg3",
+        "gap_s": 2.807
+      },
+      {
+        "from": "seg3",
+        "to": "seg4",
+        "gap_s": 2.807
+      },
+      {
+        "from": "seg4",
+        "to": "seg5",
+        "gap_s": 2.807
+      },
+      {
+        "from": "seg5",
+        "to": "seg6",
+        "gap_s": 2.247
+      },
+      {
+        "from": "seg6",
+        "to": "seg7",
+        "gap_s": 2.246
+      }
+    ],
+    "speech_overlaps": []
+  }
+}

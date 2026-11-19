@@ -96,6 +96,11 @@
     const [cx, cy, s] = cameraAt(t);
     T(E.camera, `translate(540 960) scale(${s.toFixed(5)}) translate(${(-cx).toFixed(2)} ${(-cy).toFixed(2)})`);
 
+    /* Phase 2 parallax: far layer follows camera at 0.35x, mid at 0.65x
+       (counter-translate cx*(1-f) inside the camera group => effective camera cx*f) */
+    if (E.plxFar) T(E.plxFar, `translate(${(cx * 0.65).toFixed(2)} ${(cy * 0.65).toFixed(2)})`);
+    if (E.plxMid) T(E.plxMid, `translate(${(cx * 0.35).toFixed(2)} ${(cy * 0.35).toFixed(2)})`);
+
     /* belt + rollers */
     S(E.beltDash, 'stroke-dashoffset', String(-((t * SPEED) % 64)));
     const ra = ((t * 160) % 360).toFixed(2);
@@ -152,7 +157,19 @@
     S(E.tankSwirl, 'cy', String(surf + 16));
     S(E.tankSwirl, 'rx', String(120 + 10 * Math.sin(t * 2.1)));
     O(E.tankSwirl, 0.2 * clamp((t - 37) / 2, 0, 1));
+    // rich specular gloss on the liquid (deterministic drift)
+    if (E.tankGloss) {
+      O(E.tankGloss, 0.10 * clamp((t - 37.5) / 3, 0, 1));
+      S(E.tankGloss, 'cy', String(surf - 8 + 2 * Math.sin(t * 1.7)));
+      S(E.tankGloss, 'cx', String(2100 + 14 * Math.sin(t * 0.9)));
+    }
     T(E.agitArm, `rotate(${(t * 135).toFixed(2)} 2180 566)`);
+
+    /* roaster temperature dial needle (slow deterministic sweep) */
+    if (E.roastNeedle) {
+      const na = 8 * Math.sin(t * 0.7);
+      T(E.roastNeedle, `rotate(${na.toFixed(2)} 740 446)`);
+    }
 
     /* pipe liquid (strictly inside pipe interior clip) */
     const flowActive = t >= 39.8 && t <= 52.8;
@@ -206,13 +223,18 @@
       O(mo.sheen, st.solidU * 0.55);
 
       const th = E.threads[m.i];
+      const thi = E.threadHis ? E.threadHis[m.i] : null;
       const pouring = t >= m.f0 && t <= m.f1 + 0.15 && st.shellX !== null;
       if (pouring) {
         const surfY = st.surfY;
         const mid = 2700 + Math.sin(t * 9 + m.i) * 2.5;
         S(th, 'd', `M 2700 549 Q ${mid.toFixed(1)} ${((549 + surfY - 2) / 2).toFixed(1)} 2700 ${(surfY - 2).toFixed(1)}`);
         O(th, t > m.f1 ? (m.f1 + 0.15 - t) / 0.15 : 1);
-      } else O(th, 0);
+        if (thi) {
+          S(thi, 'd', `M 2696 549 Q ${(mid - 4).toFixed(1)} ${((549 + surfY - 2) / 2).toFixed(1)} 2696 ${(surfY - 2).toFixed(1)}`);
+          O(thi, (t > m.f1 ? (m.f1 + 0.15 - t) / 0.15 : 1) * 0.6);
+        }
+      } else { O(th, 0); if (thi) O(thi, 0); }
 
       const sp = E.splash[m.i];
       const su = clamp((t - m.f0) / 0.45, 0, 1);
@@ -221,6 +243,14 @@
         S(sp, 'rx', String(8 + 18 * su)); S(sp, 'ry', String(3 + 6 * su));
         O(sp, 0.5 * (1 - su));
       } else O(sp, 0);
+
+      /* Phase 2: beveled-squares decor visible only when the bar landed on shelf */
+      if (mo.decor) {
+        const landed = (!st.clipped) && st.barTop >= 584 && st.fillH >= 73.5 &&
+          st.barLeft === m.target;
+        O(mo.decor, landed ? st.solidU : 0);
+        if (landed) T(mo.decor, `translate(${st.barLeft.toFixed(1)} ${(640 - 74).toFixed(1)})`);
+      }
     });
 
     /* gantry gripper */
@@ -248,10 +278,11 @@
     }
 
     /* steam / shimmer / dust / sparks / mist */
+    /* steam INSIDE the tank window (clipped: never above the roof — inlet fix) */
     const steamMaster = clamp((t - 36.9) * 2, 0, 1) * (1 - clamp((t - 44.0) * 3, 0, 1));
     E.steam.forEach(p => {
       const cyc = (t * 0.22 + p.seed * 0.0137) % 1;
-      T(p.g, `translate(${(2160 + Math.sin(cyc * 7 + p.seed) * 34).toFixed(1)} ${(468 - cyc * 150).toFixed(1)})`);
+      T(p.g, `translate(${(2180 + Math.sin(cyc * 7 + p.seed) * 60).toFixed(1)} ${(618 - cyc * 112).toFixed(1)})`);
       O(p.g, Math.sin(cyc * Math.PI) * 0.85 * steamMaster);
     });
     const shimMaster = clamp((t - 15.0) * 2, 0, 1) * (1 - clamp((t - 24.2) * 3, 0, 1));

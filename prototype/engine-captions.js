@@ -27,6 +27,31 @@
     const chunks = [];
     segments.forEach(seg => {
       const ws = seg.words;
+      if (Array.isArray(seg.groups) && seg.groups.length) {
+        // explicit group override (e.g. balanced end-card rhythm):
+        // each group = 1-2 words joined by spaces, consumed in order
+        let wi = 0;
+        seg.groups.forEach(grp => {
+          const toks = String(grp).trim().split(/\s+/);
+          const grpWords = [];
+          toks.forEach(tok => {
+            const w = ws[wi];
+            if (w && coreWord(w.w) === coreWord(tok)) { grpWords.push(w); wi++; }
+          });
+          if (grpWords.length) {
+            chunks.push({ words: grpWords,
+              start: Math.max(0, grpWords[0].t0 - 0.04),
+              speechEnd: grpWords[grpWords.length - 1].t1 });
+          }
+        });
+        // any unconsumed trailing words fall back to auto pairing
+        while (wi < ws.length) {
+          const w = ws[wi];
+          chunks.push({ words: [w], start: Math.max(0, w.t0 - 0.04), speechEnd: w.t1 });
+          wi++;
+        }
+        return;
+      }
       let i = 0;
       while (i < ws.length) {
         let take = 1;

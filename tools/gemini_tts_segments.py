@@ -31,6 +31,10 @@ import urllib.request
 
 OUT_DIR = os.environ.get("VE2_VOICE_OUT",
                          "/home/z/my-project/download/ve2-narration-enzo")
+# Optional partial regeneration: VE2_ONLY_SEG="seg6" or "seg6,seg3".
+# Existing OK entries in segments_report.json are preserved and merged.
+ONLY = [s.strip() for s in os.environ.get("VE2_ONLY_SEG", "").split(",")
+        if s.strip()]
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 MODEL = "gemini-3.8-flash-tts"
 VOICE = "Enzo"
@@ -173,6 +177,16 @@ def trim_and_save(pcm: bytes, rate: int, out_flac: str):
         os.unlink(tmp)
 
 
+def load_existing_report():
+    rp = os.path.join(OUT_DIR, "segments_report.json")
+    if os.path.exists(rp):
+        try:
+            return json.load(open(rp, encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            pass
+    return None
+
+
 def main() -> int:
     key = key_from_env()
     if key:
@@ -190,8 +204,12 @@ def main() -> int:
               "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                                 time.gmtime()),
               "directive": DIRECTIVE, "segments": []}
+    # merge mode: keep previously OK segments when regenerating a subset
+    prev = load_existing_report() if ONLY else None
+    prev_by_id = {s["id"]: s for s in prev["segments"]} if prev else {}
+    targets = [st for st in SEGMENTS if (not ONLY or st[0] in ONLY)]
     ok = 0
-    for sid, text in SEGMENTS:
+    for sid, text in targets:
         out = os.path.join(OUT_DIR, f"{sid}_Enzo.flac")
         entry = {"id": sid, "text": text}
         res = None
@@ -203,27 +221,44 @@ def main() -> int:
             time.sleep(2.0 * attempt)
         if not res:
             entry["status"] = "FAILED"
-            report["segments"].append(entry)
-            print(f"[{sid}] FAILED after {RETRIES} attempts")
-            continue
-        pcm, rate = res
-        raw, trimmed = trim_and_save(pcm, rate, out)
-        if trimmed is None:
-            entry["status"] = "FAILED"
-            report["segments"].append(entry)
-            continue
-        size = os.path.getsize(out)
-        entry.update({"status": "OK", "rate": rate, "raw_dur": round(raw, 3),
-                      "dur": round(trimmed, 3), "size": size})
-        ok += 1
-        print(f"[{sid}] OK raw={raw:.2f}s trimmed={trimmed:.2f}s {size:,}B")
+            if sid in prev_by_id and prev_by_id[sid].get("status") == "OK":
+                entry = prev_by_id[sid]  # keep the previous good take
+                print(f"[{sid}] regeneration failed -> keeping previous OK take")
+            else:
+                report["segments"].append(entry)
+                print(f"[{sid}] FAILED after {RETRIES} attempts")
+                continue
+        else:
+            pcm, rate = res
+            raw, trimmed = trim_and_save(pcm, rate, out)
+            if trimmed is None:
+                entry["status"] = "FAILED"
+                if sid in prev_by_id and prev_by_id[sid].get("status") == "OK":
+                    entry = prev_by_id[sid]
+                else:
+                    report["segments"].append(entry)
+                    continue
+            else:
+                size = os.path.getsize(out)
+                entry.update({"status": "OK", "rate": rate,
+                              "raw_dur": round(raw, 3),
+                              "dur": round(trimmed, 3), "size": size})
+                print(f"[{sid}] OK raw={raw:.2f}s trimmed={trimmed:.2f}s {size:,}B")
         report["segments"].append(entry)
+        ok += 1
+
+    if ONLY:
+        merged = {k: prev_by_id[k] for k in prev_by_id if k not in ONLY}
+        for e in report["segments"]:
+            merged[e["id"]] = e
+        report["segments"] = [merged[sid] for sid, _ in SEGMENTS if sid in merged]
+        ok = sum(1 for e in report["segments"] if e.get("status") == "OK")
 
     with open(os.path.join(OUT_DIR, "segments_report.json"), "w",
               encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"RESULT: {ok}/7 segments OK -> {OUT_DIR}")
-    return 0 if ok == 7 else 4
+    print(f"RESULT: {ok}/{len(SEGMENTS)} segments OK -> {OUT_DIR}")
+    return 0 if ok == len(SEGMENTS) else 4
 
 
 if __name__ == "__main__":

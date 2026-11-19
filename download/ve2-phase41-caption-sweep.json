@@ -1,0 +1,55 @@
+{
+  "sweep": [
+    {
+      "label": "seg1 caption active",
+      "t": 3.0,
+      "frame": 90,
+      "expect_caption": true,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    },
+    {
+      "label": "gap seg1->seg2 caption-free",
+      "t": 5.5,
+      "frame": 165,
+      "expect_caption": false,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    },
+    {
+      "label": "seg2 caption active",
+      "t": 8.0,
+      "frame": 240,
+      "expect_caption": true,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    },
+    {
+      "label": "gap seg4->cut4 caption-free",
+      "t": 35.5,
+      "frame": 1065,
+      "expect_caption": false,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    },
+    {
+      "label": "seg7 end-group shokolata",
+      "t": 57.5,
+      "frame": 1725,
+      "expect_caption": true,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    },
+    {
+      "label": "tail after seg7 caption-free",
+      "t": 60.4,
+      "frame": 1812,
+      "expect_caption": false,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    }
+  ],
+  "worst_mean_abs_diff": 0.0,
+  "pass": true,
+  "method": "frame-exact single-pass select extraction from both MP4s (old phase4 vs new phase4.1)"
+}

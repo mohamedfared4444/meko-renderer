@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """VE2 Phase 4 — tightened narration pacing + deterministic factory SFX.
 
+PHASE 4.1 (SFX removal, user-reported "نغمشة" fix):
+  The user reported an unpleasant crackly/hissy/ticking noise after
+  speech / between lines. Root cause = the procedural SFX bus (roller
+  ticks, bean crackle, drip accents, band-noise hisses/swirls, chime
+  pings, exit whoosh). ALL SFX layers are now DISABLED (SFX_ENABLED =
+  False): the mix is narration + the warm deterministic ambient music
+  pad only, digitally free of crackle/hiss/ticks. Segment placements,
+  word timings, timeline.js, and the 2.5D frames are untouched.
+
 PART A (pacing): re-place seg1..seg7 on the frozen 60.633 s timeline.
   - Enzo raw FLACs are kept NATURAL (no pause surgery) except seg5/seg7,
     whose scene windows are tight (internal pauses capped, then gentle
@@ -10,15 +19,13 @@ PART A (pacing): re-place seg1..seg7 on the frozen 60.633 s timeline.
   - Word timings recomputed from the ACTUAL final audio (RMS envelope ->
     speech bursts -> char-share boundaries snapped to real gaps).
 
-PART B (SFX): 100% deterministic procedural factory sound design.
-  - numpy-only synthesis, single seeded RandomState (fixed seed) for any
-    noise; every oscillator phase is a fixed formula. No Math.random(),
-    no external assets, no copyrighted material.
-  - SFX families: conveyor hum (scene 1 + molding line), roasting drum
-    warmth (tumbler + burner + crackle), roller grinder purr, conching
-    swirl, chocolate pour stream, cooling tunnel cold air + chimes.
+PART B (SFX): DISABLED in Phase 4.1 (kept for reference/history).
+  - The full procedural factory SFX design (conveyor hum, roasting
+    drum, roller grinder, conching swirl, pour stream, cooling tunnel)
+    generated band-noise hiss + tick/crackle transients that the user
+    heard as "نغمشة" between narration lines. Removed per user request.
   - Mix targets: narration speech mean ~ -16.5 dB, music pad -35 dB,
-    SFX bus ~ -32 dB, AAC decoded true peak <= -1.4 dBFS, zero clipping.
+    AAC decoded true peak <= -1.4 dBFS, zero clipping.
 
 Outputs: download/ve2-audio-timeline.json (+ timeline.js rebuild),
          output/audio/narration_mix_phase4.m4a, verify report JSON.
@@ -64,6 +71,13 @@ SEG7_GROUPS = ["وبكده الألواح", "بتطلع جاهزة", "من حب�
 
 # deterministic SFX seed (fixed forever — byte-identical mixes)
 SFX_SEED = 987126
+
+# PHASE 4.1: procedural SFX bus disabled (user-reported "نغمشة" —
+# crackly/hissy/ticking residue between narration lines). When False,
+# build_sfx() is never called and the SFX bus is DIGITAL SILENCE, so the
+# mix is exactly narration + warm ambient music pad. Flip to True only
+# if a future pass redesigns the SFX from the ground up.
+SFX_ENABLED = False
 
 
 def run(cmd, **kw):
@@ -329,121 +343,22 @@ def sinus(freq, n, phase=0.0, sr=SR):
 
 
 def build_sfx():
-    """Factory/process SFX bus, stereo, exactly VIDEO_DUR long.
-    Fully deterministic: one seeded RandomState + fixed formulas."""
-    rng = np.random.RandomState(SFX_SEED)
+    """DISABLED in Phase 4.1 (user-reported "نغمشة").
+
+    The Phase-4 procedural factory SFX bus (conveyor hum + roller ticks,
+    roasting burner hiss + tumbler thumps + bean crackle, roller-grinder
+    gear/mechanical band-noise, conching swirl, pour stream + drip
+    accents, cooling-tunnel cold air + chimes + exit whoosh) produced
+    band-limited noise and high-frequency tick transients that the user
+    heard as an unpleasant crackly/hissy layer between narration lines.
+
+    Every harsh layer has been REMOVED from this builder. The bus now
+    returns DIGITAL SILENCE so the final mix contains exactly:
+        narration (Enzo)  +  warm deterministic ambient music pad.
+    Deterministic by construction (exact zeros, no RNG draw at all).
+    """
     n_total = int(round(VIDEO_DUR * SR))
-    t = np.arange(n_total) / SR
-    L = np.zeros(n_total)
-    R = np.zeros(n_total)
-
-    def add(sig, spans, pan=0.0):
-        """Mix sig (mono, full length) into L/R inside spans w/ fades."""
-        nonlocal L, R
-        e = window_env(n_total, spans)
-        L += sig * e * (1.0 - max(0.0, pan))
-        R += sig * e * (1.0 + min(0.0, pan))
-
-    # ---- 1) conveyor hum: scene 1 belt (0-14.35) + molding line (44.17-54.4)
-    hum_spans = [(0.05, CUTS["scene2"]), (CUTS["scene5"], CUTS["scene6"])]
-    hum = 0.55 * sinus(55.0, n_total, 0.3) + 0.30 * sinus(110.0, n_total, 1.1)
-    rumble = band_noise(rng, n_total, 40, 120)
-    hum += 0.9 * rumble
-    am = 0.75 + 0.25 * sinus(0.5, n_total, 0.0)          # slow belt surge
-    roller_t = np.zeros(n_total)                          # roller ticks
-    tick_period = 0.36
-    k = np.arange(1, int(VIDEO_DUR / tick_period))
-    for tk in k * tick_period:
-        i0 = int(tk * SR)
-        ln = int(0.018 * SR)
-        if i0 + ln < n_total:
-            tt = np.arange(ln) / SR
-            roller_t[i0:i0 + ln] += np.sin(2 * np.pi * 1900 * tt) * \
-                np.exp(-tt * 320)
-    hum = (hum + 0.16 * roller_t) * am
-    add(hum, hum_spans, pan=0.0)
-
-    # ---- 2) roasting drum warmth (scene 2: 14.35-24.85)
-    burn = band_noise(rng, n_total, 120, 350)
-    burn *= 0.8 + 0.2 * sinus(0.35, n_total, 0.7)         # burner breathing
-    drum_th = np.zeros(n_total)                           # tumbler thumps
-    rot_period = 1.25
-    for tk in np.arange(14.6, CUTS["scene3"], rot_period):
-        i0 = int(tk * SR)
-        ln = int(0.30 * SR)
-        if i0 + ln < n_total:
-            tt = np.arange(ln) / SR
-            drum_th[i0:i0 + ln] += np.sin(2 * np.pi * 70 * tt * (1 + 0.04 * tt)) * \
-                np.exp(-tt * 12) * 0.9
-    crackle = np.zeros(n_total)                           # bean crackle ticks
-    n_cr = int((CUTS["scene3"] - CUTS["scene2"]) * 3.2)
-    for tc in np.sort(rng.uniform(CUTS["scene2"] + 0.3, CUTS["scene3"] - 0.2,
-                                  n_cr)):
-        i0 = int(tc * SR)
-        ln = int(0.012 * SR)
-        if i0 + ln < n_total:
-            tt = np.arange(ln) / SR
-            fc = rng.uniform(1500, 3200)
-            crackle[i0:i0 + ln] += np.sin(2 * np.pi * fc * tt) * \
-                np.exp(-tt * 500) * rng.uniform(0.4, 1.0)
-    roast = burn + drum_th + 0.10 * crackle
-    add(roast, [(CUTS["scene2"] + 0.05, CUTS["scene3"] - 0.15)], pan=0.08)
-
-    # ---- 3) roller grinder purr (scene 3: 24.85-36.9)
-    gear = np.zeros(n_total)
-    for hk in range(1, 7):                                # harmonic stack
-        gear += (1.0 / hk) * sinus(65.0 * hk, n_total, 0.21 * hk)
-    am_g = 0.62 + 0.38 * (0.5 + 0.5 * sinus(4.6, n_total, 0.0))**1.5
-    mech = band_noise(rng, n_total, 250, 700)
-    mech *= 0.7 + 0.3 * sinus(2.3, n_total, 1.9)
-    grind = (gear + 0.55 * mech) * am_g
-    add(grind, [(CUTS["scene3"] + 0.05, CUTS["scene4"] - 0.15)], pan=-0.07)
-
-    # ---- 4) conching swirl (scene 4: 36.9-44.17)
-    swirl_n = band_noise(rng, n_total, 300, 900)
-    # slow spectral wobble via AM at 0.18 Hz + vibrato tone
-    swirl = swirl_n * (0.72 + 0.28 * sinus(0.18, n_total, 0.5))
-    liq = sinus(180.0, n_total, 1.2) * (0.5 + 0.5 * sinus(0.45, n_total, 0.0))
-    liq += 0.35 * sinus(181.8, n_total, 0.4)              # gentle beating
-    conch = swirl + 0.22 * liq
-    add(conch, [(CUTS["scene4"] + 0.05, CUTS["scene5"] - 0.12)], pan=0.05)
-
-    # ---- 5) chocolate pour stream (molding/depositing: 44.4-52.6)
-    pour_n = band_noise(rng, n_total, 1200, 3500)
-    pour_rhythm = 0.55 + 0.45 * (0.5 + 0.5 * sinus(0.8, n_total, 0.9))**1.3
-    drip = np.zeros(n_total)                              # tiny drip accents
-    n_dr = 26
-    for td in np.sort(rng.uniform(44.8, 52.4, n_dr)):
-        i0 = int(td * SR)
-        ln = int(0.010 * SR)
-        if i0 + ln < n_total:
-            tt = np.arange(ln) / SR
-            drip[i0:i0 + ln] += np.sin(2 * np.pi * 2400 * tt) * \
-                np.exp(-tt * 700) * 0.8
-    pour = (pour_n * pour_rhythm + 0.12 * drip)
-    add(pour, [(44.40, 52.60)], pan=-0.04)
-
-    # ---- 6) cooling tunnel cold air + chimes (48.5-54.4) + exit whoosh
-    cold = band_noise(rng, n_total, 2500, 6000)
-    cold *= 0.7 + 0.3 * sinus(0.22, n_total, 1.4)
-    add(cold, [(48.50, CUTS["scene6"] - 0.10)], pan=0.06)
-    chime = np.zeros(n_total)
-    for tc, fc in ((48.9, 1568.0), (51.2, 2093.0), (53.4, 1568.0)):
-        i0 = int(tc * SR)
-        ln = int(0.9 * SR)
-        if i0 + ln < n_total:
-            tt = np.arange(ln) / SR
-            chime[i0:i0 + ln] += np.sin(2 * np.pi * fc * tt) * \
-                np.exp(-tt * 4.5) * 0.9
-    add(chime, [(48.5, CUTS["scene6"])], pan=0.0)
-    exit_w = band_noise(rng, n_total, 400, 1600)
-    t0w, t1w = CUTS["scene6"] + 0.05, CUTS["scene6"] + 0.75
-    win = np.zeros(n_total)
-    i0, i1 = int(t0w * SR), int(t1w * SR)
-    win[i0:i1] = np.hanning(max(1, i1 - i0))
-    add(exit_w * win, [(t0w, t1w)], pan=0.0)
-
-    return np.stack([L, R], axis=1)
+    return np.zeros((n_total, 2), dtype=np.float64)
 
 
 def normalize_db(a_stereo, target_db):
@@ -665,16 +580,28 @@ def main():
     save_wav(os.path.join(AUD, "music_pad_raw.wav"), music.ravel(), ch=2)
     print("[music] pad generated (F-C-Dm-Bb, deterministic)")
 
-    # ---------- 5) SFX bus (deterministic) ----------
-    sfx = build_sfx()
-    save_wav(os.path.join(AUD, "sfx_bus_raw.wav"), sfx.ravel(), ch=2)
-    sfx_n, sfx_cur, sfx_gain = normalize_db(sfx, -32.0)
-    save_wav(os.path.join(AUD, "sfx_bus.wav"), sfx_n.ravel(), ch=2)
-    print(f"[sfx] bus raw mean={sfx_cur:.1f}dB gain={sfx_gain:+.2f}dB "
-          f"-> -32.0 dB target (seed={SFX_SEED})")
-    report["verify"]["sfx_raw_mean_db"] = round(sfx_cur, 2)
-    report["verify"]["sfx_gain_db"] = round(sfx_gain, 2)
+    # ---------- 5) SFX bus (DISABLED in Phase 4.1 — "نغمشة" fix) ----------
+    # No procedural SFX at all: the bus is digital silence, so the mix is
+    # exactly narration + warm ambient music pad (zero crackle/hiss/ticks).
+    if SFX_ENABLED:
+        sfx = build_sfx()               # returns digital silence anyway
+        save_wav(os.path.join(AUD, "sfx_bus_raw.wav"), sfx.ravel(), ch=2)
+        sfx_n, sfx_cur, sfx_gain = normalize_db(sfx, -32.0)
+        save_wav(os.path.join(AUD, "sfx_bus.wav"), sfx_n.ravel(), ch=2)
+        report["verify"]["sfx_raw_mean_db"] = round(sfx_cur, 2)
+        report["verify"]["sfx_gain_db"] = round(sfx_gain, 2)
+    else:
+        sfx_n = np.zeros((n_total, 2), dtype=np.float64)
+        sfx_cur = -120.0
+        sfx_gain = 0.0
+        print("[sfx] DISABLED (phase 4.1): crackle/drip/tick/hiss/swirl "
+              "layers removed — mix = narration + warm pad only")
+    report["verify"]["sfx_enabled"] = bool(SFX_ENABLED)
     report["verify"]["sfx_seed"] = SFX_SEED
+    report["verify"]["sfx_note"] = (
+        "phase 4.1: procedural SFX removed per user report of crackly "
+        "hiss/tick (\u0646\u063a\u0645\u0634\u0629) between narration lines; "
+        "bus = digital silence")
 
     # ---------- 6) narration track + level staging ----------
     nar = np.zeros(n_total, dtype=np.float64)
@@ -720,7 +647,7 @@ def main():
         print("!! narration speech mean out of spec [-18, -16]"); sys.exit(6)
 
     gm = 10 ** (gain_m / 20)
-    gs = 10 ** ((-32.0 - sfx_cur) / 20)
+    gs = 10 ** ((-32.0 - sfx_cur) / 20) if SFX_ENABLED else 0.0
     mixL = nar_lim + gm * tL + gs * sfx_n[:, 0]
     mixR = nar_lim + gm * tR + gs * sfx_n[:, 1]
     peak = max(float(np.abs(mixL).max()), float(np.abs(mixR).max()))
@@ -830,6 +757,56 @@ def main():
               f"max={mx2:.1f}dB")
     checks["windows"] = wres
 
+    # PHASE 4.1 — zero-crackle/hiss/tick proof (numpy FFT band analysis).
+    # The removed SFX layers all lived above 1.5 kHz (roller ticks ~1.9
+    # kHz, bean crackle 1.5-3.2 kHz, drips 2.4 kHz, pour hiss 1.2-3.5
+    # kHz, cold-air hiss 2.5-6 kHz, chimes 1.6/2.1 kHz); the warm music
+    # pad tops out near 785 Hz, so the 1.5k-19k "SFX zone" must be empty
+    # in every narration-gap window. Hann-weighted rFFT per window; no
+    # filter cold-start transients (the old ffmpeg-highpass check was
+    # unreliable for that reason).
+    def decode_f32_mono(path):
+        rr = subprocess.run(["ffmpeg", "-v", "error", "-i", path,
+                             "-f", "f32le", "-ac", "1", "-ar", str(SR),
+                             "-"], capture_output=True)
+        return np.frombuffer(rr.stdout, dtype=np.float32).astype(np.float64)
+
+    def band_max_db(x, lo=1500.0, hi=19000.0):
+        n = len(x)
+        if n < 1024:
+            return None
+        X = np.abs(np.fft.rfft(x * np.hanning(n))) / max(1, n // 2)
+        f = np.fft.rfftfreq(n, 1.0 / SR)
+        m = (f >= lo) & (f <= hi)
+        if not m.any():
+            return None
+        return 20 * math.log10(float(X[m].max()) + 1e-12)
+
+    m4a_pcm = decode_f32_mono(os.path.join(AUD,
+                                           "narration_mix_phase4.m4a"))
+    wav_pcm = decode_f32_mono(os.path.join(AUD, "mix_final_phase4.wav"))
+    gap_hf = []
+    hf_ok = True
+    for kind, a1, a2 in windows:
+        if kind != "ambient" or a2 - a1 < 0.15:
+            continue
+        sl = slice(int(a1 * SR), int(a2 * SR))
+        d_db = band_max_db(m4a_pcm[sl])
+        w_db = band_max_db(wav_pcm[sl])
+        ok = (d_db is not None and w_db is not None
+              and d_db <= -100.0 and w_db <= -100.0)
+        hf_ok = hf_ok and ok
+        gap_hf.append({"win": [round(a1, 2), round(a2, 2)],
+                       "sfx_zone_1.5k_19k_max_db": {
+                           "decoded_m4a": round(d_db, 1),
+                           "preencode_wav": round(w_db, 1)},
+                       "ok": bool(ok)})
+        print(f"[hf-check] gap {a1:.2f}-{a2:.2f}: 1.5-19k max "
+              f"decoded={d_db:.1f}dB pre-encode={w_db:.1f}dB " +
+              ("OK (no crackle/hiss/ticks)" if ok else "FAIL"))
+    checks["gap_hf_check"] = gap_hf
+    checks["gap_hf_ok"] = bool(hf_ok)
+
     # boundary gaps from the real narration speech mask
     gaps = []
     bounds = [(CUTS["scene2"], "cut1 scene2 start"),
@@ -877,7 +854,8 @@ def main():
                     (DLB, "ve2-phase4-audio-verify.json")):
         with open(os.path.join(p, name), "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
-    ok_all = (all(g_["ok"] for g_ in gaps) and not overlaps)
+    ok_all = (all(g_["ok"] for g_ in gaps) and not overlaps
+              and checks.get("gap_hf_ok", False))
     print("AUDIO_BUILD_OK" if ok_all else "AUDIO_BUILD_WITH_WARNINGS")
     sys.exit(0 if ok_all else 1)
 

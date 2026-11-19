@@ -125,18 +125,18 @@
     "tail_out": 0.587
   },
   "verify": {
-    "sfx_raw_mean_db": -8.32,
-    "sfx_gain_db": -23.68,
+    "sfx_enabled": false,
     "sfx_seed": 987126,
+    "sfx_note": "phase 4.1: procedural SFX removed per user report of crackly hiss/tick (نغمشة) between narration lines; bus = digital silence",
     "narration_limited_speech_mean_db": -16.79,
     "narration_limited_peak_dbfs": -2.0,
     "music_gain_db": -19.32,
     "mix_peak_dbfs": -1.54,
-    "aac_scale_db": 0.0,
-    "aac_decoded_peak_dbfs": -1.36,
+    "aac_scale_db": -0.55,
+    "aac_decoded_peak_dbfs": -1.47,
     "mix_duration": 60.633,
-    "mix_mean_db": -18.9,
-    "mix_max_db": -1.4,
+    "mix_mean_db": -19.4,
+    "mix_max_db": -1.5,
     "windows": [
       {
         "kind": "speech",
@@ -144,8 +144,8 @@
           1.9,
           4.97
         ],
-        "mean_db": -17.1,
-        "max_db": -1.8
+        "mean_db": -17.7,
+        "max_db": -2.3
       },
       {
         "kind": "ambient",
@@ -153,8 +153,8 @@
           5.37,
           5.89
         ],
-        "mean_db": -34.0,
-        "max_db": -26.4
+        "mean_db": -34.6,
+        "max_db": -27.0
       },
       {
         "kind": "speech",
@@ -162,8 +162,8 @@
           15.44,
           23.09
         ],
-        "mean_db": -17.8,
-        "max_db": -1.5
+        "mean_db": -18.4,
+        "max_db": -2.2
       },
       {
         "kind": "speech",
@@ -171,8 +171,8 @@
           26.89,
           33.84
         ],
-        "mean_db": -17.3,
-        "max_db": -1.6
+        "mean_db": -17.9,
+        "max_db": -2.2
       },
       {
         "kind": "ambient",
@@ -180,8 +180,8 @@
           34.54,
           36.7
         ],
-        "mean_db": -35.9,
-        "max_db": -26.1
+        "mean_db": -36.6,
+        "max_db": -26.7
       },
       {
         "kind": "speech",
@@ -189,8 +189,8 @@
           37.45,
           43.4
         ],
-        "mean_db": -16.8,
-        "max_db": -1.7
+        "mean_db": -17.4,
+        "max_db": -2.3
       },
       {
         "kind": "speech",
@@ -198,8 +198,8 @@
           46.25,
           52.11
         ],
-        "mean_db": -17.4,
-        "max_db": -1.7
+        "mean_db": -17.9,
+        "max_db": -2.3
       },
       {
         "kind": "ambient",
@@ -207,8 +207,8 @@
           52.61,
           54.46
         ],
-        "mean_db": -33.9,
-        "max_db": -25.7
+        "mean_db": -34.5,
+        "max_db": -26.9
       },
       {
         "kind": "ambient",
@@ -216,8 +216,8 @@
           0.05,
           1.5
         ],
-        "mean_db": -38.5,
-        "max_db": -26.7
+        "mean_db": -39.1,
+        "max_db": -27.3
       },
       {
         "kind": "speech",
@@ -225,10 +225,57 @@
           54.96,
           59.75
         ],
-        "mean_db": -18.0,
-        "max_db": -1.7
+        "mean_db": -18.6,
+        "max_db": -2.3
       }
     ],
+    "gap_hf_check": [
+      {
+        "win": [
+          5.37,
+          5.89
+        ],
+        "sfx_zone_1.5k_19k_max_db": {
+          "decoded_m4a": -135.0,
+          "preencode_wav": -212.0
+        },
+        "ok": true
+      },
+      {
+        "win": [
+          34.54,
+          36.7
+        ],
+        "sfx_zone_1.5k_19k_max_db": {
+          "decoded_m4a": -138.6,
+          "preencode_wav": -220.1
+        },
+        "ok": true
+      },
+      {
+        "win": [
+          52.61,
+          54.46
+        ],
+        "sfx_zone_1.5k_19k_max_db": {
+          "decoded_m4a": -133.7,
+          "preencode_wav": -218.3
+        },
+        "ok": true
+      },
+      {
+        "win": [
+          0.05,
+          1.5
+        ],
+        "sfx_zone_1.5k_19k_max_db": {
+          "decoded_m4a": -140.1,
+          "preencode_wav": -192.5
+        },
+        "ok": true
+      }
+    ],
+    "gap_hf_ok": true,
     "boundary_gaps": [
       {
         "at": 14.35,

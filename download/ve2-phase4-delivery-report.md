@@ -93,3 +93,53 @@ The AAC ladder accepted the first encode (−1.36 dBFS); decoded max via volumed
 - `download/ve2-phase4-regression-check.json` — pixel-identity proof
 - `download/ve2-phase4-audio/narration_mix_phase4.m4a` + deterministic SFX bus WAV (seed 987126)
 - `tools/ve2_build_audio_phase4.py` — reproducible Part A+B builder
+
+---
+
+# Phase 4.1 Update — Harsh SFX removal («نغمشة» fix)
+
+**Date:** 2026-11-19 · **Trigger:** user reported an unpleasant crackly/hissy/ticking noise («نغمشة») after speech / between narration lines, caused by the Phase-4 procedural SFX bus.
+
+## What changed
+
+- `tools/ve2_build_audio_phase4.py`: **all procedural SFX layers disabled** (`SFX_ENABLED = False`; `build_sfx()` now returns digital silence — the harsh generators — roller ticks ~1.9 kHz, seeded bean crackle 1.5–3.2 kHz, drip accents 2.4 kHz, all band-noise hiss/swirl families (40–120, 120–350, 250–700, 300–900, 1.2–3.5, 2.5–6 kHz), chime pings 1568/2093 Hz, exit whoosh — are removed from the builder). The mix is now **narration + warm deterministic ambient music pad only**.
+- **Segment placements / word timings / timeline.js / 2.5D frames: untouched.** `ve2-audio-timeline.json` is byte-identical to the Phase-4 version (md5 `46df7fe8…` before = after); regenerated `prototype/timeline.js` is byte-identical (md5 `275e319a…`); video stream MD5 of the re-muxed MP4 is identical to Phase 4 (`b7f3cd30…`) — frames bit-for-bit unchanged.
+
+## Audio measurements (Phase 4 → Phase 4.1)
+
+| Metric | Phase 4 (SFX on) | Phase 4.1 (SFX off) | Target |
+|---|---|---|---|
+| Narration speech mean (limited) | −16.79 dB | **−16.79 dB** (unchanged) | −16.5…−18 dB |
+| Music pad mean | −35 dB | **−35 dB** (gain −19.32 dB) | −35 dB |
+| SFX bus | −32 dB (removed) | **digital silence** | — |
+| AAC decoded peak | −1.36 dBFS | **−1.47 dBFS** (ladder −0.55 dB) | ~−1.3…−1.5 dBFS, zero clipping |
+| Mix WAV peak | −1.54 dBFS | **−1.54 dBFS** | < −1.3 dBFS |
+| Mix duration | 60.633 s | **60.633 s** | 60.633 s |
+| Speech windows (decoded MP4) | −16.8…−18.0 dB | **−17.4…−18.6 dB** mean, max −2.2…−2.3 dB | −16.5…−18 dB |
+| Ambient windows (pad only) | −33.9…−38.5 dB (max −25.7…−26.7) | **−34.5…−39.1 dB mean (max −26.7…−27.3)** | quiet, non-fatiguing |
+
+## Zero-crackle/hiss/tick proof (new automated check)
+
+Hann-weighted rFFT band analysis of every narration-gap window, SFX zone = 1.5–19 kHz (all removed layers lived there; the warm pad tops out at ~785 Hz):
+
+| Gap window | Phase 4 (with SFX) | Phase 4.1 decoded m4a | Phase 4.1 pre-encode WAV |
+|---|---|---|---|
+| 5.37–5.89 s (roller ticks were here) | −115.1 dB | **−135.0 dB** | −212.0 dB |
+| 34.54–36.70 s | −137.0 dB | **−138.6 dB** | −220.1 dB |
+| 52.61–54.46 s (cold-air hiss + chime were here) | **−64.8 dB** | **−133.7 dB** | −218.3 dB |
+| 0.05–1.50 s (roller ticks were here) | −109.5 dB | **−140.1 dB** | −192.5 dB |
+
+The pre-encode mix WAV contains **mathematically zero** energy above 1.5 kHz in all gaps (−192…−220 dB = float rounding); the decoded AAC floor (−134…−140 dB) is codec noise ~70 dB below the old SFX residue. Check criterion ≤ −100 dB: **4/4 PASS** (`gap_hf_ok: true` in `ve2-phase4-audio-verify.json`). Gap boundary checks 6/6 OK, speech overlaps: none.
+
+## Verification re-run
+
+- **determinism:** two independent rebuilds → `narration_mix_phase4.m4a` byte-identical (md5 `eddc8939…`); decoded audio PCM in the MP4 identical to the m4a (md5 `c636b3fe…`); video stream MD5 unchanged.
+- **captionSweep:** frame-exact extraction old-vs-new MP4 at 6 timestamps (caption-active t=3.0/8.0/57.5 «شوكولاتة» + caption-free t=5.5/35.5/60.4) → **MAD 0.0000, 100 % identical pixels** on all frames (`ve2-phase41-caption-sweep.json`).
+- **audio peak/duration:** MP4 audio astats peak **−1.474 dBFS**, RMS −19.4 dB, duration **60.633333 s**, 1819 frames, 1080×1920 @30 fps — all PASS.
+
+## Phase 4.1 files
+
+- `download/ve2-phase4-25d-enzo-sfx.mp4` — re-muxed deliverable (video stream copied bit-exact, clean audio)
+- `download/ve2-phase4-audio/narration_mix_phase4.m4a` — clean narration + pad mix (replaced; the Phase-4 with-SFX mix remains in git history at `edee146`, and `sfx_bus_deterministic_seed987126.wav` is kept as reference of what was removed)
+- `download/ve2-phase4-audio-verify.json` — updated with `sfx_enabled: false`, gap HF check, new measurements
+- `download/ve2-phase41-caption-sweep.json` — caption/frame identity proof

@@ -1,7 +1,7 @@
 {
   "model": "gemini-3.8-flash-tts",
   "voice": "Enzo",
-  "generated_at_utc": "2026-11-19T04:50:32Z",
+  "generated_at_utc": "2026-11-19T04:59:12Z",
   "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: ",
   "segments": [
     {
@@ -52,7 +52,11 @@
     {
       "id": "seg6",
       "text": "الشوكولاتة السايحة بتتصب في القوالب، وبتعدى تونيل تبريد لحد ما تتماسك.",
-      "status": "FAILED"
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 6.56,
+      "dur": 6.721,
+      "size": 176244
     },
     {
       "id": "seg7",

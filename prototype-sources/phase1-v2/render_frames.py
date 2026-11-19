@@ -154,6 +154,70 @@ VERIFY_JS = r"""
     });
     out.chips = { worst, pass: worst.gap >= 5 };
   }
+  // ---------- 8) Phase 2: mold schedule non-overlap under the deposition spout ----------
+  {
+    let worst = {t: 0, inZone: 0, pouring: 0};
+    for (let tt = 44.0; tt <= 54.4; tt += 0.05) {
+      window.__ve2.renderAt(tt);
+      let inZone = 0, pouring = 0;
+      window.VE2.els.molds.forEach(mo => {
+        if (parseFloat(mo.shellG.getAttribute('opacity')) > 0.5) {
+          const tr = mo.shellG.getAttribute('transform') || '';
+          const m2 = /translate\(([-\d.]+) /.exec(tr);
+          if (m2) { const x = parseFloat(m2[1]); if (x >= 2640 && x <= 2760) inZone++; }
+        }
+      });
+      window.VE2.els.threads.forEach(th => {
+        if (parseFloat(th.getAttribute('opacity')) > 0.5) pouring++;
+      });
+      if (inZone > worst.inZone || pouring > worst.pouring) worst = {t: +tt.toFixed(2), inZone, pouring};
+    }
+    out.moldOverlap = { worst, pass: worst.inZone <= 1 && worst.pouring <= 1 };
+  }
+  // ---------- 9) Phase 2: mixing-machine inlet cleanliness at 37s/42s ----------
+  // Nothing from the product layers may paint ABOVE the tank roof inside the
+  // tank span; steam must be structurally clipped inside the tank interior.
+  {
+    const effOpacity = node => { let o = 1, n = node; while (n && n.getAttribute) { const a = parseFloat(n.getAttribute('opacity') ?? '1'); o *= a; n = n.parentNode; } return o; };
+    const clippedIn = (node, clipName) => { let n = node; while (n && n.getAttribute) { const cp = n.getAttribute('clip-path'); if (cp && cp.indexOf(clipName) !== -1) return true; n = n.parentNode; } return false; };
+    const checks = [37.5, 42.0].map(tt => {
+      const [cx,cy,s] = cam(tt);
+      const T = window.VE2.G.TANK;
+      const z0 = scr(T.x0, T.y0 - 60, cx, cy, s);
+      const z1 = scr(T.x1, T.y0 - 1, cx, cy, s);
+      const zone = {left: Math.min(z0[0],z1[0]), top: Math.min(z0[1],z1[1]),
+                    right: Math.max(z0[0],z1[0]), bottom: Math.max(z0[1],z1[1])};
+      const intruders = [];
+      ['layer-products','layer-products-back'].forEach(lid => {
+        const leaves = document.getElementById(lid).querySelectorAll('path,rect,circle,ellipse,line,polygon,text');
+        leaves.forEach(ch => {
+          const op = effOpacity(ch);
+          if (op < 0.05) return;
+          if (clippedIn(ch, 'pipeInteriorClip') || clippedIn(ch, 'tankSteamClip') || clippedIn(ch, 'tankEntryClip')) return;
+          const b = ch.getBoundingClientRect();
+          if (b.width===0 && b.height===0) return;
+          const over = !(b.right < zone.left || zone.right < b.left || b.bottom < zone.top || zone.bottom < b.top);
+          if (over) intruders.push({layer: lid, tag: ch.tagName, op: +op.toFixed(2)});
+        });
+      });
+      return {t: tt, intruders};
+    });
+    const steamOK = (() => {
+      const S2 = window.VE2.els.steam;
+      if (!S2 || S2.length < 3) return false;
+      const r = document.getElementById('tankSteamRect');
+      if (!r || parseFloat(r.getAttribute('y')) < window.VE2.G.TANK.y0) return false;
+      let n = S2[0].g.parentNode, ok = false;
+      while (n && n.getAttribute) {
+        const cp = n.getAttribute('clip-path');
+        if (cp && cp.indexOf('tankSteamClip') !== -1) { ok = true; break; }
+        n = n.parentNode;
+      }
+      return ok;
+    })();
+    const totalIntr = checks.reduce((a,c)=>a+c.intruders.length,0);
+    out.inletClean = { checks, steamOK, totalIntruders: totalIntr, pass: totalIntr === 0 && steamOK };
+  }
   return out;
 }
 """

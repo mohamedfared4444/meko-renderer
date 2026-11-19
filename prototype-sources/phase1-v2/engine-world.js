@@ -1,6 +1,12 @@
 /* VE2 engine-world.js — builds the deterministic SVG world ONCE at init.
-   Layers: bg > belt-back > machines-back > products-back > products > machines-front > effects > labels
-   All geometry in world coordinates. No randomness at render time (seeded offsets baked at init). */
+   PHASE 2 (Stylized 2.5D): layered factory environment with camera parallax,
+   distinct 2.5D machine silhouettes (modular archetypes), beveled conveyor,
+   volumetric products with contact shadows. ZERO REGRESSION: all Phase 1.1
+   fixes kept (evenodd openings, closed liquid path, safe margins, caption
+   Single-Pop, determinism). All entry/exit/window/porthole coordinates are
+   byte-identical to Phase 1.1.
+   Layers: bg[far|mid|near] > belt-back > machines-back > products-back >
+           products > machines-front > effects > labels */
 (function () {
   'use strict';
   const NS = 'http://www.w3.org/2000/svg';
@@ -40,7 +46,7 @@
     return function () {
       a |= 0; a = (a + 0x6D2B79F5) | 0;
       let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      t = (t + Math.imul(t ^ (t >>> 14)) >>> 0) / 4294967296;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
@@ -49,61 +55,178 @@
   function rect(x, y, w, h) { return { x, y, w, h }; }
   function machineBox(id, x0, x1, y0, y1) { V.machines.push({ id, x0, x1, y0, y1 }); }
 
-  /* ================= LAYER: BG ================= */
-  function buildBG() {
-    const L = V.els['layer-bg'];
-    el('rect', { x: -300, y: -2400, width: 5200, height: 3200, fill: 'url(#gWall)' }, L);
-    // wall panel seams
-    for (let x = -300; x <= 4900; x += 300) {
-      el('rect', { x: x - 3, y: -400, width: 6, height: 1180, fill: '#241826', opacity: 0.55 }, L);
-    }
-    el('rect', { x: -300, y: 208, width: 5200, height: 14, fill: '#2c1f30', opacity: 0.8 }, L);
-    // lamps + glow
-    for (let x = 60; x <= 4700; x += 640) {
-      el('rect', { x: x - 46, y: 96, width: 92, height: 18, rx: 6, fill: '#3a2c3a' }, L);
-      el('ellipse', { cx: x, cy: 128, rx: 190, ry: 150, fill: 'url(#gLamp)' }, L);
-      el('rect', { x: x - 34, y: 112, width: 68, height: 7, rx: 3, fill: '#ffd98a', opacity: 0.85 }, L);
-    }
-    // floor
-    el('rect', { x: -300, y: G.FLOOR, width: 5200, height: 3800, fill: 'url(#gFloor)' }, L);
-    el('rect', { x: -300, y: G.FLOOR, width: 5200, height: 8, fill: '#3a2c40', opacity: 0.9 }, L);
-    // subtle floor seams
-    for (let x = -240; x <= 4900; x += 260) {
-      el('rect', { x, y: G.FLOOR + 40, width: 4, height: 220, fill: '#1c1420', opacity: 0.5 }, L);
+  /* ---- Phase 2 helpers: 2.5D bevel edge + rivets + contact shadow ---- */
+  // oblique depth bevel along the top (light) and right (dark) edges
+  function bevelEdge(parent, x0, y0, x1, y1, w, op) {
+    w = w || 14; op = op === undefined ? 0.55 : op;
+    el('rect', { x: x0, y: y0, width: (x1 - x0), height: w, fill: '#ffffff', opacity: 0.10 * op }, parent);
+    el('rect', { x: x0, y: y0, width: 5, height: (y1 - y0), fill: '#ffffff', opacity: 0.07 * op }, parent);
+    el('rect', { x: x1 - w * 0.55, y: y0 + w * 0.55, width: w * 0.55, height: (y1 - y0) - w * 0.55, fill: '#000000', opacity: 0.22 * op }, parent);
+    el('rect', { x: x0 + w * 0.55, y: y1 - w * 0.4, width: (x1 - x0) - w * 0.55, height: w * 0.4, fill: '#000000', opacity: 0.18 * op }, parent);
+    // oblique corner notch (top-right): hints isometric depth
+    el('polygon', { points: `${x1 - w},${y0 + w} ${x1},${y0} ${x1},${y0 + w}`, fill: '#ffffff', opacity: 0.09 * op }, parent);
+  }
+  // rivet rows along a horizontal band (seeded, deterministic)
+  function rivetRow(parent, x0, x1, y, seed, step, r) {
+    step = step || 92; r = r || 3.2;
+    const rnd = mulberry32(seed);
+    for (let x = x0; x <= x1; x += step) {
+      const jy = y + (rnd() - 0.5) * 3;
+      el('circle', { cx: x, cy: jy, r, fill: '#2e2a34', opacity: 0.9 }, parent);
+      el('circle', { cx: x - 0.8, cy: jy - 0.8, r: r * 0.55, fill: '#6a7484', opacity: 0.85 }, parent);
     }
   }
+  function contactShadow(parent, cx, cy, rx, ry, op) {
+    el('ellipse', { cx, cy, rx, ry, fill: '#000000', opacity: op === undefined ? 0.34 : op }, parent);
+  }
 
-  /* ================= LAYER: BELT-BACK ================= */
+  /* ================= LAYER: BG (3 parallax sub-layers) ================= */
+  function buildBG() {
+    const L = V.els['layer-bg'];
+    // far (follows camera at 0.35x) — deep factory architecture
+    const far = el('g', { id: 'plx-far' }, L);
+    V.els.plxFar = far;
+    el('rect', { x: -1500, y: -2400, width: 8300, height: 3300, fill: 'url(#gWallFar)' }, far);
+    // wall panel seams
+    for (let x = -1320; x <= 6600; x += 420) {
+      el('rect', { x: x - 3, y: -500, width: 6, height: 1300, fill: '#221622', opacity: 0.5 }, far);
+    }
+    // structural steel columns (I-beam hint)
+    for (let x = -960; x <= 6100; x += 960) {
+      el('rect', { x: x - 17, y: -300, width: 34, height: G.FLOOR + 10, fill: 'url(#gColumn)', opacity: 0.9 }, far);
+      el('rect', { x: x - 24, y: -300, width: 48, height: 12, rx: 2, fill: '#3a2e36', opacity: 0.9 }, far);
+      el('rect', { x: x - 24, y: G.FLOOR - 8, width: 48, height: 10, rx: 2, fill: '#241b26', opacity: 0.9 }, far);
+      el('rect', { x: x - 3, y: -288, width: 6, height: G.FLOOR - 280, fill: '#1c151f', opacity: 0.5 }, far);
+      rivetRow(far, x - 12, x - 12, -240, 9000 + x, 150, 2.4);
+    }
+    // arched clerestory windows + warm volumetric rays
+    for (let x = -640; x <= 5800; x += 1050) {
+      const ax = x, aw = 132, ay0 = 128, ay1 = 316, ar = aw / 2;
+      el('path', {
+        d: `M ${ax} ${ay1} V ${ay0 + ar} A ${ar} ${ar} 0 0 1 ${ax + aw} ${ay0 + ar} V ${ay1} Z`,
+        fill: 'url(#gArchWin)', stroke: '#3a2c3a', 'stroke-width': 6
+      }, far);
+      // mullions
+      el('line', { x1: ax + aw / 3, y1: ay0 + 26, x2: ax + aw / 3, y2: ay1, stroke: '#3a2c3a', 'stroke-width': 4 }, far);
+      el('line', { x1: ax + 2 * aw / 3, y1: ay0 + 26, x2: ax + 2 * aw / 3, y2: ay1, stroke: '#3a2c3a', 'stroke-width': 4 }, far);
+      el('line', { x1: ax, y1: ay0 + ar + 8, x2: ax + aw, y2: ay0 + ar + 8, stroke: '#3a2c3a', 'stroke-width': 4 }, far);
+      el('rect', { x: ax - 8, y: ay1, width: aw + 16, height: 12, rx: 3, fill: '#332634', opacity: 0.9 }, far);
+      // volumetric light ray descending from the window (subtle, wide)
+      el('polygon', {
+        points: `${ax + 14} ${ay1} ${ax + aw - 14} ${ay1} ${ax + aw + 66} ${ay1 + 430} ${ax - 66} ${ay1 + 430}`,
+        fill: 'url(#gRay)', opacity: 0.14
+      }, far);
+      el('polygon', {
+        points: `${ax + 34} ${ay1} ${ax + aw - 34} ${ay1} ${ax + aw + 10} ${ay1 + 360} ${ax - 10} ${ay1 + 360}`,
+        fill: 'url(#gRay)', opacity: 0.10
+      }, far);
+    }
+    // distant background pipes
+    el('rect', { x: -1500, y: 252, width: 8300, height: 9, rx: 4, fill: '#3a2f38', opacity: 0.85 }, far);
+    el('rect', { x: -1500, y: 272, width: 8300, height: 5, rx: 2, fill: '#322830', opacity: 0.8 }, far);
+    for (let x = -1360; x <= 6500; x += 340) {
+      el('rect', { x: x - 7, y: 248, width: 14, height: 17, rx: 3, fill: '#463a44', opacity: 0.9 }, far);
+    }
+
+    // mid (follows camera at 0.65x) — service catwalk + gauges + ambience
+    const mid = el('g', { id: 'plx-mid' }, L);
+    V.els.plxMid = mid;
+    // ambient light pools along the walkway
+    for (let x = -1200; x <= 6300; x += 760) {
+      el('ellipse', { cx: x, cy: 386, rx: 240, ry: 60, fill: 'url(#gLamp)', opacity: 0.5 }, mid);
+    }
+    // vertical feed drops (behind catwalk)
+    for (let x = -900; x <= 6100; x += 700) {
+      el('rect', { x: x - 7, y: 292, width: 14, height: 106, fill: '#372c38', opacity: 0.85 }, mid);
+      el('rect', { x: x - 10, y: 300, width: 20, height: 8, rx: 2, fill: '#453a46', opacity: 0.9 }, mid);
+    }
+    // catwalk walkway + brackets
+    el('rect', { x: -1500, y: 368, width: 8300, height: 26, fill: 'url(#gCatwalk)', opacity: 0.96 }, mid);
+    el('rect', { x: -1500, y: 368, width: 8300, height: 4, fill: '#5a4e60', opacity: 0.8 }, mid);
+    for (let x = -1440; x <= 6600; x += 480) {
+      el('polygon', { points: `${x} 394 ${x + 26} 394 ${x + 18} 420 ${x + 8} 420`, fill: '#2c2434', opacity: 0.9 }, mid);
+    }
+    // railing (posts + two rails)
+    for (let x = -1440; x <= 6600; x += 240) {
+      el('rect', { x: x - 2, y: 332, width: 4, height: 36, fill: '#49525e', opacity: 0.85 }, mid);
+    }
+    el('rect', { x: -1500, y: 334, width: 8300, height: 3.5, fill: 'url(#gRailMetal)', opacity: 0.9 }, mid);
+    el('rect', { x: -1500, y: 350, width: 8300, height: 2.5, fill: '#49525e', opacity: 0.7 }, mid);
+    // industrial gauges between windows
+    for (let x = -260; x <= 6100; x += 840) {
+      el('circle', { cx: x, cy: 438, r: 17, fill: 'url(#gGauge)', stroke: '#3a3140', 'stroke-width': 3.5, opacity: 0.92 }, mid);
+      el('line', { x1: x, y1: 438, x2: x + 8, y2: 430, stroke: '#43322a', 'stroke-width': 2.4 }, mid);
+      el('circle', { cx: x, cy: 438, r: 2.6, fill: '#3a3140' }, mid);
+    }
+
+    // near (1.0x, plain world coords) — floor + contact shadows
+    const near = el('g', { id: 'plx-near' }, L);
+    V.els.plxNear = near;
+    el('rect', { x: -300, y: G.FLOOR, width: 5200, height: 3800, fill: 'url(#gFloor)' }, near);
+    el('rect', { x: -300, y: G.FLOOR, width: 5200, height: 8, fill: '#3a2c40', opacity: 0.9 }, near);
+    for (let x = -240; x <= 4900; x += 260) {
+      el('rect', { x, y: G.FLOOR + 40, width: 4, height: 220, fill: '#1c1420', opacity: 0.5 }, near);
+    }
+    // belt support-leg shadows
+    for (let x = -180; x <= 4300; x += 480) {
+      contactShadow(near, x + 8, G.FLOOR + 4, 46, 10, 0.30);
+    }
+    // machine drop shadows (soft, grounded)
+    contactShadow(near, 850, G.FLOOR + 6, 250, 16, 0.32);
+    contactShadow(near, 1520, G.FLOOR + 6, 235, 16, 0.32);
+    contactShadow(near, 2180, G.FLOOR + 6, 235, 16, 0.32);
+    contactShadow(near, 2700, G.FLOOR + 6, 115, 12, 0.28);
+    contactShadow(near, 3320, G.FLOOR + 6, 255, 16, 0.32);
+    contactShadow(near, 4020, G.FLOOR + 6, 240, 16, 0.30);
+  }
+
+  /* ================= LAYER: BELT-BACK (2.5D beveled conveyor) ================= */
   function buildBelt() {
     const L = V.els['layer-belt-back'];
     const y = G.BELT_Y;
     el('rect', { x: -300, y: y, width: 4700, height: G.BELT_BOT - y, fill: 'url(#gBelt)' }, L);
-    const top = el('rect', { x: -300, y: y, width: 4700, height: 6, fill: '#4a4356' }, L);
+    // 2.5D top rail: light bevel face + bright edge line
+    const top = el('rect', { x: -300, y: y, width: 4700, height: 6, fill: 'url(#gSteelBevel)' }, L);
+    el('rect', { x: -300, y: y, width: 4700, height: 2, fill: '#9aa4b2', opacity: 0.85 }, L);
     const dash = el('line', { x1: -300, y1: y + 3, x2: 4400, y2: y + 3, stroke: '#5c5468', 'stroke-width': 3, 'stroke-dasharray': '34 30' }, L);
     V.els.beltDash = dash;
     V.els.beltTop = top;
-    // rollers
+    // sheen strips on the belt body (subtle metallic bands)
+    el('rect', { x: -300, y: y + 10, width: 4700, height: 5, fill: '#57506b', opacity: 0.5 }, L);
+    el('rect', { x: -300, y: y + 22, width: 4700, height: 3, fill: '#2e2838', opacity: 0.6 }, L);
+    // rollers (metallic radial gradient) + static hubs
     const rollers = [];
+    const hubs = [];
     for (let x = -260; x <= 4380; x += 88) {
-      const c = el('circle', { cx: x, cy: (y + G.BELT_BOT) / 2 + 8, r: 11, fill: '#3c3546', stroke: '#524a5e', 'stroke-width': 2 }, L);
-      el('line', { x1: x - 7, y1: (y + G.BELT_BOT) / 2 + 8, x2: x + 7, y2: (y + G.BELT_BOT) / 2 + 8, stroke: '#5c5468', 'stroke-width': 2 }, c);
+      const cy = (y + G.BELT_BOT) / 2 + 8;
+      const c = el('circle', { cx: x, cy, r: 11, fill: 'url(#gRoller)', stroke: '#524a5e', 'stroke-width': 2 }, L);
+      el('line', { x1: x - 7, y1: cy, x2: x + 7, y2: cy, stroke: '#5c5468', 'stroke-width': 2 }, c);
       rollers.push(c);
+      hubs.push([x, cy]);
     }
+    hubs.forEach(([hx, hy]) => {
+      el('circle', { cx: hx, cy: hy, r: 3.2, fill: '#8a94a2', opacity: 0.9 }, L);
+    });
     V.els.rollers = rollers;
+    // beveled bottom rail (front skirt) — 2.5D thickness
+    el('rect', { x: -300, y: G.BELT_BOT, width: 4700, height: 9, fill: 'url(#gSteelBevel)' }, L);
+    el('rect', { x: -300, y: G.BELT_BOT + 9, width: 4700, height: 2.5, fill: '#1c1720', opacity: 0.9 }, L);
     // supports
     for (let x = -180; x <= 4300; x += 480) {
-      el('rect', { x, y: G.BELT_BOT, width: 16, height: G.FLOOR - G.BELT_BOT, fill: '#2c2434' }, L);
+      el('rect', { x, y: G.BELT_BOT + 8, width: 16, height: G.FLOOR - G.BELT_BOT - 8, fill: '#2c2434' }, L);
+      el('rect', { x: x + 2, y: G.BELT_BOT + 8, width: 4, height: G.FLOOR - G.BELT_BOT - 8, fill: '#3c3444', opacity: 0.8 }, L);
       el('rect', { x: x - 12, y: G.FLOOR - 10, width: 40, height: 10, fill: '#241d2c' }, L);
     }
   }
 
-  /* ================= ROASTER ================= */
+  /* ================= ROASTER (barrel archetype) ================= */
   function buildRoaster() {
     const R = G.ROASTER;
     const back = V.els['layer-machines-back'], front = V.els['layer-machines-front'];
-    // chimney (behind body)
+    // chimney (behind body) + rim
     el('rect', { x: R.chim[0], y: R.chim[2], width: R.chim[1] - R.chim[0], height: R.y0 - R.chim[2], fill: '#5f3a1c' }, back);
     el('rect', { x: R.chim[0] - 8, y: R.chim[2], width: R.chim[1] - R.chim[0] + 16, height: 16, rx: 4, fill: '#6d4423' }, back);
+    el('rect', { x: R.chim[0] - 2, y: R.chim[2] + 26, width: R.chim[1] - R.chim[0] + 4, height: 4, fill: '#4e3016', opacity: 0.8 }, back);
     // drum (seen through cutaway window)
     const [cx, cy] = R.drumC;
     el('circle', { cx, cy, r: R.drumR, fill: '#2a180c', stroke: '#1f1007', 'stroke-width': 6 }, back);
@@ -123,47 +246,77 @@
     const db = [];
     for (let i = 0; i < 9; i++) {
       const rad = 34 + rnd() * 58, base = rnd() * 360, sp = 1.25 + rnd() * 0.5;
-      const b = el('ellipse', { cx: 0, cy: 0, rx: 12, ry: 8.5, fill: C.beanRoast }, drumBeans);
+      const b = el('ellipse', { cx: 0, cy: 0, rx: 12, ry: 8.5, fill: 'url(#gBeanRoast)' }, drumBeans);
       db.push({ rad, base, sp, b });
     }
     V.els.drumBeans = db;
-    // front face with holes (evenodd): body + drum window + entry + exit
-    const d = `M ${R.x0} ${R.y0} H ${R.x1} V ${R.y1} H ${R.x0} Z
+    // burner glow at the base (behind body, warm radial)
+    el('ellipse', { cx: cx, cy: R.y1 - 26, rx: 130, ry: 44, fill: 'url(#gBurner)', opacity: 0.55 }, back);
+    // front face (evenodd): rounded barrel body + drum window + entry + exit
+    const rT = 64, rB = 30;
+    const d = `M ${R.x0 + rT} ${R.y0} H ${R.x1 - rT} Q ${R.x1} ${R.y0} ${R.x1} ${R.y0 + rT}
+      V ${R.y1 - rB} Q ${R.x1} ${R.y1} ${R.x1 - rB} ${R.y1} H ${R.x0 + rB} Q ${R.x0} ${R.y1} ${R.x0} ${R.y1 - rB}
+      V ${R.y0 + rT} Q ${R.x0} ${R.y0} ${R.x0 + rT} ${R.y0} Z
       M ${cx - R.winR} ${cy} a ${R.winR} ${R.winR} 0 1 0 ${2 * R.winR} 0 a ${R.winR} ${R.winR} 0 1 0 ${-2 * R.winR} 0 Z
       M ${R.entry[0]} ${R.entry[2]} H ${R.entry[1]} V ${R.entry[3]} H ${R.entry[0]} Z
       M ${R.exit[0]} ${R.exit[2]} H ${R.exit[1]} V ${R.exit[3]} H ${R.exit[0]} Z`;
-    el('path', { d, 'fill-rule': 'evenodd', fill: 'url(#gCopper)', stroke: '#4a2c12', 'stroke-width': 5 }, front);
+    el('path', { d, 'fill-rule': 'evenodd', fill: 'url(#gBronzeDrum)', stroke: '#4a2c12', 'stroke-width': 5 }, front);
+    // barrel band (horizontal steel strap) — cylindrical silhouette cue
+    el('rect', { x: R.x0 + 8, y: R.y0 + 118, width: (R.x1 - R.x0) - 16, height: 14, rx: 6, fill: '#3a2c3a', opacity: 0.55 }, front);
+    el('rect', { x: R.x0 + 8, y: R.y0 + 118, width: (R.x1 - R.x0) - 16, height: 3, fill: '#6a7484', opacity: 0.5 }, front);
+    bevelEdge(front, R.x0 + 6, R.y0 + 6, R.x1 - 6, R.y1 - 6, 14, 0.5);
+    rivetRow(front, R.x0 + 40, R.x1 - 40, R.y0 + 30, 7001, 88, 3.2);
+    rivetRow(front, R.x0 + 40, R.x1 - 40, R.y1 - 28, 7002, 88, 3.2);
     el('circle', { cx, cy, r: R.winR, fill: 'none', stroke: '#3a2410', 'stroke-width': 9 }, front);
     el('circle', { cx, cy, r: R.winR + 5, fill: 'none', stroke: '#96602f', 'stroke-width': 3, opacity: 0.7 }, front);
+    el('circle', { cx, cy, r: R.winR - 6, fill: 'none', stroke: '#ffffff', 'stroke-width': 2, opacity: 0.10 }, front);
     // hole rims
     el('rect', { x: R.entry[0] - 4, y: R.entry[2] - 4, width: R.entry[1] - R.entry[0] + 8, height: R.entry[3] - R.entry[2] + 8, fill: 'none', stroke: '#4a2c12', 'stroke-width': 4 }, front);
     el('rect', { x: R.exit[0] - 4, y: R.exit[2] - 4, width: R.exit[1] - R.exit[0] + 8, height: R.exit[3] - R.exit[2] + 8, fill: 'none', stroke: '#4a2c12', 'stroke-width': 4 }, front);
     // legs + base plate
     el('rect', { x: R.x0 + 30, y: R.y1 - 6, width: 22, height: G.FLOOR - R.y1 + 6, fill: '#3a2410' }, front);
     el('rect', { x: R.x1 - 52, y: R.y1 - 6, width: 22, height: G.FLOOR - R.y1 + 6, fill: '#3a2410' }, front);
-    // control panel
+    // control panel + temperature dial
     el('rect', { x: R.x0 + 18, y: R.y0 + 22, width: 74, height: 44, rx: 8, fill: '#3a2410' }, front);
     el('circle', { cx: R.x0 + 40, cy: R.y0 + 44, r: 9, fill: C.gold, opacity: 0.9 }, front);
     el('circle', { cx: R.x0 + 68, cy: R.y0 + 44, r: 9, fill: '#c96a3a', opacity: 0.9 }, front);
+    const dial = el('g', {}, front);
+    el('circle', { cx: R.x0 + 120, cy: R.y0 + 46, r: 21, fill: 'url(#gGauge)', stroke: '#4a2c12', 'stroke-width': 4 }, dial);
+    el('line', { x1: R.x0 + 120, y1: R.y0 + 46, x2: R.x0 + 112, y2: R.y0 + 34, stroke: '#8a3a1a', 'stroke-width': 3, 'stroke-linecap': 'round' }, dial);
+    el('circle', { cx: R.x0 + 120, cy: R.y0 + 46, r: 3, fill: '#4a2c12' }, dial);
+    const needle = el('line', { x1: R.x0 + 120, y1: R.y0 + 46, x2: R.x0 + 129, y2: R.y0 + 40, stroke: '#c96a3a', 'stroke-width': 3, 'stroke-linecap': 'round' }, dial);
+    V.els.roastNeedle = needle;
     machineBox('roaster', R.x0, R.x1, R.chim[2], R.y1);
   }
 
-  /* ================= GRINDER ================= */
+  /* ================= GRINDER (conical hopper + gears archetype) ================= */
   function buildGrinder() {
     const R = G.GRINDER;
     const back = V.els['layer-machines-back'], front = V.els['layer-machines-front'], pb = V.els['layer-products-back'];
-    // hopper behind top
-    el('path', { d: `M ${R.hop[0]} ${R.hop[2]} H ${R.hop[1]} L ${R.hop[1] - 30} ${R.hop[3]} H ${R.hop[0] + 30} Z`, fill: '#39414c', stroke: '#2c343e', 'stroke-width': 4 }, back);
-    // rollers
+    // 2.5D conical hopper (behind top) with rim + sheen
+    const H = R.hop;
+    el('path', { d: `M ${H[0]} ${H[2]} H ${H[1]} L ${H[1] - 30} ${H[3]} H ${H[0] + 30} Z`, fill: 'url(#gSteel)', stroke: '#2c343e', 'stroke-width': 4 }, back);
+    el('rect', { x: H[0] - 10, y: H[2] - 10, width: (H[1] - H[0]) + 20, height: 14, rx: 4, fill: 'url(#gSteelBevel)', stroke: '#2c343e', 'stroke-width': 3 }, back);
+    el('rect', { x: H[0] - 10, y: H[2] - 10, width: (H[1] - H[0]) + 20, height: 3, fill: '#9aa4b2', opacity: 0.7 }, back);
+    el('polygon', { points: `${H[0] + 44} ${H[2] + 6} ${H[0] + 84} ${H[2] + 6} ${H[0] + 74} ${H[3] - 6} ${H[0] + 52} ${H[3] - 6}`, fill: '#ffffff', opacity: 0.10 }, back);
+    rivetRow(back, H[0] + 20, H[1] - 20, H[2] + 12, 7101, 72, 2.6);
+    // rollers -> 3D gears (teeth rotate with the group)
     const rollers = [];
-    [[R.r1, 1], [R.r2, -1]].forEach(([rr]) => {
+    [[R.r1, 1], [R.r2, -1]].forEach(([rr], gi) => {
       const g = el('g', {}, back);
-      const c = el('circle', { cx: rr[0], cy: rr[1], r: rr[2], fill: 'url(#gSteel)', stroke: '#2c343e', 'stroke-width': 5 }, g);
+      const c = el('circle', { cx: rr[0], cy: rr[1], r: rr[2], fill: 'url(#gRoller)', stroke: '#2c343e', 'stroke-width': 5 }, g);
+      for (let i = 0; i < 8; i++) {
+        const a = (i * 45 + (gi ? 22 : 0)) * Math.PI / 180;
+        const x1 = rr[0] + Math.cos(a) * (rr[2] - 2), y1 = rr[1] + Math.sin(a) * (rr[2] - 2);
+        const x2 = rr[0] + Math.cos(a) * (rr[2] + 11), y2 = rr[1] + Math.sin(a) * (rr[2] + 11);
+        el('line', { x1, y1, x2, y2, stroke: '#5f6a78', 'stroke-width': 9, 'stroke-linecap': 'round' }, g);
+      }
       for (let i = 0; i < 4; i++) {
         const a = i * 45;
         el('line', { x1: rr[0] - Math.cos(a * Math.PI / 180) * (rr[2] - 10), y1: rr[1] - Math.sin(a * Math.PI / 180) * (rr[2] - 10), x2: rr[0] + Math.cos(a * Math.PI / 180) * (rr[2] - 10), y2: rr[1] + Math.sin(a * Math.PI / 180) * (rr[2] - 10), stroke: '#39414c', 'stroke-width': 4 }, g);
       }
       el('circle', { cx: rr[0], cy: rr[1], r: 10, fill: '#2c343e' }, g);
+      el('circle', { cx: rr[0] - 22, cy: rr[1] - 26, r: 8, fill: '#ffffff', opacity: 0.10 }, g);
       rollers.push(g);
     });
     V.els.grindRollers = rollers;
@@ -182,11 +335,23 @@
     V.els.pasteLvl = pasteLvl;
     // front face (evenodd): body + window + entry + exit
     const W = R.win;
-    const d = `M ${R.x0} ${R.y0} H ${R.x1} V ${R.y1} H ${R.x0} Z
+    const rT = 22, rB = 18;
+    const d = `M ${R.x0 + rT} ${R.y0} H ${R.x1 - rT} Q ${R.x1} ${R.y0} ${R.x1} ${R.y0 + rT}
+      V ${R.y1 - rB} Q ${R.x1} ${R.y1} ${R.x1 - rB} ${R.y1} H ${R.x0 + rB} Q ${R.x0} ${R.y1} ${R.x0} ${R.y1 - rB}
+      V ${R.y0 + rT} Q ${R.x0} ${R.y0} ${R.x0 + rT} ${R.y0} Z
       M ${W[0]} ${W[2]} H ${W[1]} V ${W[3]} H ${W[0]} Z
       M ${R.entry[0]} ${R.entry[2]} H ${R.entry[1]} V ${R.entry[3]} H ${R.entry[0]} Z
       M ${R.exit[0]} ${R.exit[2]} H ${R.exit[1]} V ${R.exit[3]} H ${R.exit[0]} Z`;
     el('path', { d, 'fill-rule': 'evenodd', fill: 'url(#gSteel)', stroke: '#2c343e', 'stroke-width': 5 }, front);
+    // ribbed chamber sides (vertical rib pairs, outside window)
+    for (let x = R.x0 + 26; x <= R.x1 - 30; x += 34) {
+      if (x > W[0] - 18 && x < W[1] + 14) continue;
+      el('line', { x1: x, y1: R.y0 + 26, x2: x, y2: R.y1 - 22, stroke: '#39414c', 'stroke-width': 5, opacity: 0.5 }, front);
+      el('line', { x1: x + 3, y1: R.y0 + 26, x2: x + 3, y2: R.y1 - 22, stroke: '#6a7484', 'stroke-width': 1.6, opacity: 0.45 }, front);
+    }
+    bevelEdge(front, R.x0 + 6, R.y0 + 6, R.x1 - 6, R.y1 - 6, 14, 0.55);
+    rivetRow(front, R.x0 + 36, R.x1 - 36, R.y0 + 30, 7201, 84, 3);
+    rivetRow(front, R.x0 + 36, R.x1 - 36, R.y1 - 26, 7202, 84, 3);
     el('rect', { x: W[0], y: W[2], width: W[1] - W[0], height: W[3] - W[2], fill: 'none', stroke: '#2c343e', 'stroke-width': 8 }, front);
     el('rect', { x: R.entry[0] - 4, y: R.entry[2] - 4, width: R.entry[1] - R.entry[0] + 8, height: R.entry[3] - R.entry[2] + 8, fill: 'none', stroke: '#2c343e', 'stroke-width': 4 }, front);
     el('rect', { x: R.exit[0] - 4, y: R.exit[2] - 4, width: R.exit[1] - R.exit[0] + 8, height: R.exit[3] - R.exit[2] + 8, fill: 'none', stroke: '#2c343e', 'stroke-width': 4 }, front);
@@ -197,11 +362,26 @@
     machineBox('grinder', R.x0, R.x1, R.hop[2], R.y1);
   }
 
-  /* ================= CONCHING TANK ================= */
+  /* ================= CONCHING TANK (rounded titanium tank archetype) ================= */
   function buildTank() {
     const R = G.TANK;
     const back = V.els['layer-machines-back'], front = V.els['layer-machines-front'], pb = V.els['layer-products-back'];
-    el('rect', { x: R.x0, y: R.y0, width: R.x1 - R.x0, height: R.y1 - R.y0, fill: '#2b4a58' }, back);
+    // PHASE 2 INLET FIX: closed upper feed pipe connected to the roof
+    // (visual affordance of a sealed intake — nothing floats above the roof)
+    const fx = 2252, fw = 34, fyTop = 336;
+    el('rect', { x: fx, y: fyTop, width: fw, height: R.y0 - fyTop + 6, fill: 'url(#gSteel)', stroke: '#2c343e', 'stroke-width': 4 }, back);
+    el('rect', { x: fx - 7, y: fyTop - 12, width: fw + 14, height: 14, rx: 4, fill: 'url(#gSteelBevel)', stroke: '#2c343e', 'stroke-width': 3 }, back);
+    el('rect', { x: fx - 7, y: fyTop - 12, width: fw + 14, height: 3, fill: '#9aa4b2', opacity: 0.7 }, back);
+    el('rect', { x: fx - 9, y: R.y0 - 14, width: fw + 18, height: 12, rx: 3, fill: '#39414c', stroke: '#2c343e', 'stroke-width': 3 }, back);
+    el('rect', { x: fx + 5, y: fyTop + 8, width: 4, height: R.y0 - fyTop - 12, fill: '#9aa4b2', opacity: 0.35 }, back);
+    // back wall (rounded tank silhouette)
+    const rT = 44, rB = 28;
+    el('path', {
+      d: `M ${R.x0 + rT} ${R.y0} H ${R.x1 - rT} Q ${R.x1} ${R.y0} ${R.x1} ${R.y0 + rT}
+        V ${R.y1 - rB} Q ${R.x1} ${R.y1} ${R.x1 - rB} ${R.y1} H ${R.x0 + rB} Q ${R.x0} ${R.y1} ${R.x0} ${R.y1 - rB}
+        V ${R.y0 + rT} Q ${R.x0} ${R.y0} ${R.x0 + rT} ${R.y0} Z`,
+      fill: '#2b4a58'
+    }, back);
     // pool (through window)
     const P = R.pool;
     el('rect', { x: P[0], y: P[2], width: P[1] - P[0], height: P[3] - P[2], fill: '#1c2f38' }, pb);
@@ -209,22 +389,51 @@
     const lvlLiq = el('rect', { x: P[0], y: P[3], width: P[1] - P[0], height: 0, fill: 'url(#gLiquid)' }, pb);
     const surf = el('rect', { x: P[0], y: P[3], width: P[1] - P[0], height: 5, fill: C.liquidHi, opacity: 0.8 }, pb);
     const swirl = el('ellipse', { cx: 2180, cy: 600, rx: 120, ry: 16, fill: C.liquidHi, opacity: 0.2 }, pb);
-    V.els.tankLvlPaste = lvlPaste; V.els.tankLvlLiq = lvlLiq; V.els.tankSurf = surf; V.els.tankSwirl = swirl;
-    // agitator
+    // rich specular gloss on the liquid (soft diagonal highlight)
+    const gloss = el('ellipse', { cx: 2100, cy: 596, rx: 90, ry: 13, fill: '#ffffff', opacity: 0 }, pb);
+    V.els.tankLvlPaste = lvlPaste; V.els.tankLvlLiq = lvlLiq; V.els.tankSurf = surf; V.els.tankSwirl = swirl; V.els.tankGloss = gloss;
+    // agitator (3D: shaft + dual arms + blades + bolted hub)
     const ag = el('g', {}, pb);
     el('rect', { x: R.agit - 9, y: 462, width: 18, height: 100, rx: 6, fill: '#55606e' }, ag);
+    el('rect', { x: R.agit - 3, y: 462, width: 4, height: 100, fill: '#7d8a99', opacity: 0.5 }, ag);
     const armG = el('g', {}, ag);
     el('line', { x1: R.agit, y1: 566, x2: R.agit + 128, y2: 566, stroke: '#55606e', 'stroke-width': 12, 'stroke-linecap': 'round' }, armG);
     el('line', { x1: R.agit, y1: 566, x2: R.agit - 128, y2: 566, stroke: '#55606e', 'stroke-width': 12, 'stroke-linecap': 'round' }, armG);
+    el('line', { x1: R.agit + 70, y1: 566, x2: R.agit + 70, y2: 584, stroke: '#4c5560', 'stroke-width': 8, 'stroke-linecap': 'round' }, armG);
+    el('line', { x1: R.agit - 70, y1: 566, x2: R.agit - 70, y2: 584, stroke: '#4c5560', 'stroke-width': 8, 'stroke-linecap': 'round' }, armG);
     el('circle', { cx: R.agit, cy: 566, r: 14, fill: '#39414c', stroke: '#55606e', 'stroke-width': 4 }, ag);
+    for (let i = 0; i < 6; i++) {
+      const a = i * 60 * Math.PI / 180;
+      el('circle', { cx: R.agit + Math.cos(a) * 8, cy: 566 + Math.sin(a) * 8, r: 1.8, fill: '#7d8a99' }, ag);
+    }
     V.els.agitArm = armG;
-    // front face (evenodd): body + window + entry
+    // steam INSIDE the tank interior, clipped — never above the roof (inlet fix)
+    const steamWrap = el('g', { 'clip-path': 'url(#tankSteamClip)' }, pb);
+    const steam = [];
+    for (let i = 0; i < 4; i++) {
+      const g = el('g', { opacity: 0 }, steamWrap);
+      el('ellipse', { cx: 0, cy: 0, rx: 26, ry: 14, fill: '#e8dcc8', opacity: 0.16 }, g);
+      el('ellipse', { cx: 10, cy: -12, rx: 16, ry: 9, fill: '#e8dcc8', opacity: 0.12 }, g);
+      steam.push({ g, seed: i * 77 });
+    }
+    V.els.steam = steam;
+    // front face (evenodd): rounded tank + window + entry
     const W = R.win;
-    const d = `M ${R.x0} ${R.y0} H ${R.x1} V ${R.y1} H ${R.x0} Z
+    const d = `M ${R.x0 + rT} ${R.y0} H ${R.x1 - rT} Q ${R.x1} ${R.y0} ${R.x1} ${R.y0 + rT}
+      V ${R.y1 - rB} Q ${R.x1} ${R.y1} ${R.x1 - rB} ${R.y1} H ${R.x0 + rB} Q ${R.x0} ${R.y1} ${R.x0} ${R.y1 - rB}
+      V ${R.y0 + rT} Q ${R.x0} ${R.y0} ${R.x0 + rT} ${R.y0} Z
       M ${W[0]} ${W[2]} H ${W[1]} V ${W[3]} H ${W[0]} Z
       M ${R.entry[0]} ${R.entry[2]} H ${R.entry[1]} V ${R.entry[3]} H ${R.entry[0]} Z`;
-    el('path', { d, 'fill-rule': 'evenodd', fill: '#3a6b7d', stroke: '#27505e', 'stroke-width': 5 }, front);
+    el('path', { d, 'fill-rule': 'evenodd', fill: 'url(#gTitanium)', stroke: '#27505e', 'stroke-width': 5 }, front);
+    // titanium band pair (tank silhouette cue)
+    el('rect', { x: R.x0 + 10, y: R.y0 + 76, width: (R.x1 - R.x0) - 20, height: 10, rx: 4, fill: '#39505f', opacity: 0.75 }, front);
+    el('rect', { x: R.x0 + 10, y: R.y1 - 84, width: (R.x1 - R.x0) - 20, height: 10, rx: 4, fill: '#39505f', opacity: 0.6 }, front);
+    bevelEdge(front, R.x0 + 6, R.y0 + 6, R.x1 - 6, R.y1 - 6, 15, 0.6);
+    rivetRow(front, R.x0 + 36, R.x1 - 36, R.y0 + 30, 7301, 86, 3);
+    rivetRow(front, R.x0 + 36, R.x1 - 36, R.y1 - 26, 7302, 86, 3);
     el('rect', { x: W[0], y: W[2], width: W[1] - W[0], height: W[3] - W[2], fill: 'none', stroke: '#27505e', 'stroke-width': 8 }, front);
+    // glass gloss streak over the window (front layer, subtle)
+    el('polygon', { points: `${W[0] + 30} ${W[2] + 6} ${W[0] + 110} ${W[2] + 6} ${W[0] + 44} ${W[3] - 6} ${W[0] + 4} ${W[3] - 6}`, fill: 'url(#gGloss)', opacity: 0.5 }, front);
     el('rect', { x: R.entry[0] - 4, y: R.entry[2] - 4, width: R.entry[1] - R.entry[0] + 8, height: R.entry[3] - R.entry[2] + 8, fill: 'none', stroke: '#27505e', 'stroke-width': 4 }, front);
     // outlet stub on right wall (pipe start)
     el('rect', { x: R.outlet[0] - 10, y: R.outlet[2] - 12, width: (R.outlet[1] - R.outlet[0]) + 20, height: (R.outlet[3] - R.outlet[2]) + 24, rx: 5, fill: '#39414c' }, front);
@@ -258,6 +467,8 @@
     // dark bore (back wall of pipe)
     el('path', { d: path, fill: 'none', stroke: '#17121c', 'stroke-width': 30, 'stroke-linejoin': 'round', 'stroke-linecap': 'butt' }, back);
     el('path', { d: path, fill: 'none', stroke: '#2c2434', 'stroke-width': 24, 'stroke-linejoin': 'round' }, back);
+    // metallic top sheen along the pipe
+    el('path', { d: path, fill: 'none', stroke: '#55606e', 'stroke-width': 3, 'stroke-linejoin': 'round', opacity: 0.5, transform: 'translate(0 -8)' }, back);
     // liquid stream (clipped to interior)
     const liqG = el('g', { 'clip-path': 'url(#pipeInteriorClip)' }, pb);
     const liq = el('path', { id: 'pipeLiquid', d: `M ${P.cx1} ${P.yStart - 2} L ${P.cx1} ${P.yTop} L ${P.cx2} ${P.yTop} L ${P.cx2} ${P.yEnd - 4}`, fill: 'none', stroke: 'url(#gLiquid)', 'stroke-width': 11, 'stroke-dasharray': '26 18' }, liqG);
@@ -273,10 +484,12 @@
     machineBox('pipe', P.cx1 - 20, P.cx2 + 20, P.yEnd - 14, P.yStart);
   }
 
-  /* ================= FUNNEL (depositor cabinet w/ integrated mold magazine) ================= */
+  /* ================= FUNNEL (depositor cabinet — emerald reservoir archetype) ================= */
   function buildFunnel() {
     const R = G.FUNNEL;
     const back = V.els['layer-machines-back'], front = V.els['layer-machines-front'], pb = V.els['layer-products-back'];
+    // 3D reservoir behind the cabinet top (rim ellipse + inner shadow)
+    el('ellipse', { cx: (R.x0 + R.x1) / 2, cy: R.y0 + 6, rx: (R.x1 - R.x0) / 2 - 12, ry: 12, fill: '#1a3d26', opacity: 0.9 }, back);
     // hopper liquid (behind, visible through window)
     const lw = el('g', {}, pb);
     const funLvl = el('rect', { x: 2664, y: R.spout[2], width: 72, height: 0, fill: 'url(#gLiquid)' }, lw);
@@ -286,10 +499,17 @@
     const W = R.win, S = R.spout;
     const d = `M ${R.x0} ${R.y0} H ${R.x1} L ${S[1]} ${S[2]} L ${S[1]} ${S[2] + 14} H ${R.x1} V ${R.y1} H ${R.x0} V ${S[2] + 14} H ${S[0]} L ${S[0]} ${S[2]} Z
       M ${W[0]} ${W[2]} H ${W[1]} V ${W[3]} H ${W[0]} Z`;
-    el('path', { d, 'fill-rule': 'evenodd', fill: 'url(#gGreen)', stroke: '#1f4a2c', 'stroke-width': 5 }, front);
+    el('path', { d, 'fill-rule': 'evenodd', fill: 'url(#gEmeraldRes)', stroke: '#1f4a2c', 'stroke-width': 5 }, front);
+    // reservoir sheen (diagonal metallic streak on the upper trapezoid)
+    el('polygon', { points: `${R.x0 + 34} ${R.y0 + 8} ${R.x0 + 92} ${R.y0 + 8} ${R.x0 + 66} ${R.y0 + 92} ${R.x0 + 26} ${R.y0 + 74}`, fill: 'url(#gGloss)', opacity: 0.45 }, front);
+    bevelEdge(front, R.x0 + 5, R.y0 + 5, R.x1 - 5, R.y1 - 5, 13, 0.5);
+    rivetRow(front, R.x0 + 30, R.x1 - 30, R.y1 - 30, 7401, 60, 2.8);
     el('rect', { x: W[0], y: W[2], width: W[1] - W[0], height: W[3] - W[2], fill: 'none', stroke: '#1f4a2c', 'stroke-width': 7 }, front);
-    // spout mouth ring
+    // multi-layer pouring nozzle: mouth ring + collar + tip
     el('rect', { x: S[0] - 5, y: S[2] - 4, width: (S[1] - S[0]) + 10, height: 12, rx: 4, fill: '#1f4a2c' }, front);
+    el('rect', { x: S[0] - 9, y: S[2] - 9, width: (S[1] - S[0]) + 18, height: 7, rx: 3, fill: 'url(#gSteelBevel)', stroke: '#1f4a2c', 'stroke-width': 2.5 }, front);
+    el('rect', { x: S[0] + 2, y: S[2] + 8, width: (S[1] - S[0]) - 4, height: 9, rx: 3, fill: '#153322', opacity: 0.95 }, front);
+    el('rect', { x: S[0] + 6, y: S[2] + 9, width: 3, height: 6, rx: 1.5, fill: '#7fae90', opacity: 0.8 }, front);
     // control lamp
     el('circle', { cx: R.x0 + 26, cy: R.y0 + 26, r: 10, fill: C.gold, opacity: 0.9 }, front);
     // magazine slot marker on left wall (molds slide out to the right on the belt)
@@ -297,7 +517,7 @@
     machineBox('funnel', R.x0, R.x1, R.y0, R.y1);
   }
 
-  /* ================= COOLING TUNNEL ================= */
+  /* ================= COOLING TUNNEL (insulated panel archetype) ================= */
   function buildTunnel() {
     const R = G.TUNNEL;
     const back = V.els['layer-machines-back'], front = V.els['layer-machines-front'];
@@ -310,13 +530,40 @@
     const mist = el('rect', { x: R.x0 + 6, y: R.y0 + 8, width: R.x1 - R.x0 - 12, height: R.y1 - R.y0 - 16, fill: 'url(#gFrost)', opacity: 0.0 }, back);
     V.els.tunnelMist = mist;
     // front face (evenodd): body + entry + exit + window
-    const d = `M ${R.x0} ${R.y0} H ${R.x1} V ${R.y1} H ${R.x0} Z
+    const rT = 20, rB = 16;
+    const d = `M ${R.x0 + rT} ${R.y0} H ${R.x1 - rT} Q ${R.x1} ${R.y0} ${R.x1} ${R.y0 + rT}
+      V ${R.y1 - rB} Q ${R.x1} ${R.y1} ${R.x1 - rB} ${R.y1} H ${R.x0 + rB} Q ${R.x0} ${R.y1} ${R.x0} ${R.y1 - rB}
+      V ${R.y0 + rT} Q ${R.x0} ${R.y0} ${R.x0 + rT} ${R.y0} Z
       M ${R.entry[0]} ${R.entry[2]} H ${R.entry[1]} V ${R.entry[3]} H ${R.entry[0]} Z
       M ${R.exit[0]} ${R.exit[2]} H ${R.exit[1]} V ${R.exit[3]} H ${R.exit[0]} Z
       M ${R.win[0]} ${R.win[2]} H ${R.win[1]} V ${R.win[3]} H ${R.win[0]} Z`;
-    el('path', { d, 'fill-rule': 'evenodd', fill: 'url(#gIce)', stroke: '#22394f', 'stroke-width': 5 }, front);
+    el('path', { d, 'fill-rule': 'evenodd', fill: 'url(#gIcePanel)', stroke: '#22394f', 'stroke-width': 5 }, front);
+    // insulated panel seams (beveled 2.5D plates)
+    for (let x = R.x0 + 74; x <= R.x1 - 40; x += 96) {
+      el('line', { x1: x, y1: R.y0 + 12, x2: x, y2: R.y1 - 12, stroke: '#2c5378', 'stroke-width': 3.5, opacity: 0.85 }, front);
+      el('line', { x1: x + 2.5, y1: R.y0 + 12, x2: x + 2.5, y2: R.y1 - 12, stroke: '#7fa9cf', 'stroke-width': 1.5, opacity: 0.6 }, front);
+    }
+    bevelEdge(front, R.x0 + 6, R.y0 + 6, R.x1 - 6, R.y1 - 6, 14, 0.45);
+    rivetRow(front, R.x0 + 40, R.x1 - 40, R.y0 + 30, 7501, 90, 3);
+    rivetRow(front, R.x0 + 40, R.x1 - 40, R.y1 - 26, 7502, 90, 3);
     el('rect', { x: R.win[0], y: R.win[2], width: R.win[1] - R.win[0], height: R.win[3] - R.win[2], fill: '#bfe3ff', opacity: 0.10 }, front);
     el('rect', { x: R.win[0], y: R.win[2], width: R.win[1] - R.win[0], height: R.win[3] - R.win[2], fill: 'none', stroke: '#22394f', 'stroke-width': 8 }, front);
+    // glowing digital temperature screen (4°C)
+    const sc = el('g', {}, front);
+    el('rect', { x: 3170, y: 386, width: 118, height: 30, rx: 6, fill: 'url(#gScreen)', stroke: '#22394f', 'stroke-width': 3 }, sc);
+    el('text', { x: 3229, y: 407, 'text-anchor': 'middle', 'font-size': 21, 'font-weight': 700, fill: '#9fdcff', 'letter-spacing': '2' }, sc, '4°C');
+    el('rect', { x: 3170, y: 386, width: 118, height: 30, rx: 6, fill: 'none', stroke: '#9fdcff', 'stroke-width': 1, opacity: 0.28 }, sc);
+    // strip curtains at entry/exit (soft hanging strips)
+    [[R.entry[0], R.entry[1]], [R.exit[0], R.exit[1]]].forEach(([a, b], gi) => {
+      const w = b - a;
+      for (let i = 0; i < 3; i++) {
+        el('rect', {
+          x: a + i * (w / 3) + 1, y: R.entry[2] - 8,
+          width: (w / 3) - 2, height: (R.entry[3] - R.entry[2]) + 16,
+          fill: 'url(#gCurtain)', opacity: gi ? 0.55 : 0.75
+        }, front);
+      }
+    });
     // snowflake marks
     const sf = el('g', { opacity: 0.7 }, front);
     [[3260, 465], [3320, 490], [3380, 462]].forEach(([x, y]) => {
@@ -339,6 +586,7 @@
     el('rect', { x: S.beltEnd[0], y: 520, width: S.beltEnd[1] - S.beltEnd[0], height: G.FLOOR - 520, fill: '#39414c' }, front);
     el('rect', { x: S.beltEnd[0] - 6, y: 520, width: S.beltEnd[1] - S.beltEnd[0] + 12, height: 14, rx: 4, fill: '#2c343e' }, front);
     el('rect', { x: S.beltEnd[0] + 6, y: 534, width: 8, height: 60, fill: '#2c343e', opacity: 0.7 }, front);
+    bevelEdge(front, S.beltEnd[0] + 2, 522, S.beltEnd[1] - 2, G.FLOOR - 4, 10, 0.4);
     // shelf (same top level as belt — Fix 5a: no height gap)
     el('rect', { x: S.shelf[0], y: G.BELT_Y, width: S.shelf[1] - S.shelf[0], height: 14, fill: '#3c3546' }, front);
     el('rect', { x: S.shelf[0], y: G.BELT_Y, width: S.shelf[1] - S.shelf[0], height: 5, fill: '#524a5e' }, front);
@@ -346,11 +594,14 @@
     el('rect', { x: S.shelf[1] - 60, y: G.BELT_Y + 14, width: 18, height: G.FLOOR - G.BELT_Y - 14, fill: '#2c2434' }, front);
     // gantry: column + arm + brace
     el('rect', { x: S.colX[0], y: S.gantryArmY, width: S.colX[1] - S.colX[0], height: G.FLOOR - S.gantryArmY, fill: '#2f2836' }, back);
+    el('rect', { x: S.colX[0] + 3, y: S.gantryArmY + 4, width: 5, height: G.FLOOR - S.gantryArmY - 8, fill: '#453c4e', opacity: 0.8 }, back);
     el('rect', { x: S.arm[0], y: S.gantryArmY, width: S.arm[1] - S.arm[0], height: 26, rx: 8, fill: '#3c3546' }, back);
+    el('rect', { x: S.arm[0] + 6, y: S.gantryArmY + 3, width: (S.arm[1] - S.arm[0]) - 12, height: 4, rx: 2, fill: '#5a5264', opacity: 0.8 }, back);
     el('line', { x1: S.colX[0], y1: S.gantryArmY + 26, x2: S.colX[0] - 210, y2: G.FLOOR, stroke: '#2f2836', 'stroke-width': 12 }, back);
     // trolley carriage on the arm + animated stems + claw feet (all attached to gantry)
     const trolley = el('g', {}, front);
     el('rect', { x: -42, y: -12, width: 84, height: 20, rx: 6, fill: '#55606e', stroke: '#39414c', 'stroke-width': 3 }, trolley);
+    el('rect', { x: -36, y: -9, width: 72, height: 4, rx: 2, fill: '#7d8a99', opacity: 0.6 }, trolley);
     const stemL = el('line', { x1: -74, y1: 8, x2: -74, y2: 240, stroke: '#4c5560', 'stroke-width': 7 }, front);
     const stemR = el('line', { x1: 74, y1: 8, x2: 74, y2: 240, stroke: '#4c5560', 'stroke-width': 7 }, front);
     const clawL = el('g', {}, front);
@@ -362,10 +613,10 @@
     machineBox('shelf', S.shelf[0], S.shelf[1], G.BELT_Y, G.FLOOR);
   }
 
-  /* ================= PRODUCTS ================= */
+  /* ================= PRODUCTS (2.5D: spherical beans, deep molds, bar decor) ================= */
   function buildProducts() {
     const pr = V.els['layer-products'];
-    // bean clusters (raw, entering roaster)
+    // bean clusters (raw, entering roaster) — spherical gradient + spec + contact shadow
     const rnd = mulberry32(303);
     const clusters = [];
     for (let k = 0; k < 6; k++) {
@@ -376,8 +627,11 @@
       }
       clusters.push({ g, offs, t0: 2.5 + 2.0 * k });
       offs.forEach(o => {
-        el('ellipse', { cx: 0, cy: 0, rx: 13, ry: 9, fill: C.beanRaw, transform: `rotate(${o.rot})` }, g);
-        el('line', { x1: -6, y1: -2, x2: 6, y2: -2, stroke: '#33200f', 'stroke-width': 2 }, g);
+        const bg2 = el('g', { transform: `translate(${o.dx} ${o.dy}) rotate(${o.rot})` }, g);
+        el('ellipse', { cx: 1, cy: 9, rx: 12, ry: 3.6, fill: '#000000', opacity: 0.30 }, bg2);
+        el('ellipse', { cx: 0, cy: 0, rx: 13, ry: 9, fill: 'url(#gBean)' }, bg2);
+        el('ellipse', { cx: -4, cy: -3, rx: 4.5, ry: 2.4, fill: '#9a7048', opacity: 0.75 }, bg2);
+        el('path', { d: 'M -6 1 Q 0 3 6 1', fill: 'none', stroke: '#33200f', 'stroke-width': 2 }, bg2);
       });
     }
     V.els.beanClusters = clusters;
@@ -388,16 +642,22 @@
       const offs = [];
       const rr = mulberry32(404 + k);
       for (let i = 0; i < 5; i++) offs.push({ dx: i * 26 + rr() * 8 - 4, dy: rr() * 8 - 4 });
-      offs.forEach(o => el('ellipse', { cx: 0, cy: 0, rx: 13, ry: 9, fill: C.beanRoast }, g));
+      offs.forEach(o => {
+        const bg2 = el('g', { transform: `translate(${o.dx} ${o.dy})` }, g);
+        el('ellipse', { cx: 1, cy: 9, rx: 12, ry: 3.4, fill: '#000000', opacity: 0.30 }, bg2);
+        el('ellipse', { cx: 0, cy: 0, rx: 13, ry: 9, fill: 'url(#gBeanRoast)' }, bg2);
+        el('ellipse', { cx: -4, cy: -3, rx: 4.5, ry: 2.4, fill: '#9a7048', opacity: 0.7 }, bg2);
+      });
       roasted.push({ g, offs, t0: 21.2 + 1.4 * k });
     }
     V.els.roastedClusters = roasted;
-    // paste lump
-    const lump = el('g', {}, pr);
+    // paste lump (2.5D: shadow + body + highlight)
+    const lump = el('g', { 'clip-path': 'url(#tankEntryClip)' }, pr);
+    el('ellipse', { cx: 0, cy: 8, rx: 28, ry: 5.5, fill: '#000000', opacity: 0.30 }, lump);
     el('ellipse', { cx: 0, cy: -12, rx: 27, ry: 15, fill: C.paste }, lump);
     el('ellipse', { cx: -8, cy: -16, rx: 10, ry: 5, fill: '#5f4028', opacity: 0.8 }, lump);
     V.els.pasteLump = lump;
-    // molds (3): shell + bar(+fill)
+    // molds (3): shell (+2.5D inner depth) + bar(+fill) + shelf decor
     const molds = [];
     for (let i = 0; i < 3; i++) {
       const shellG = el('g', {}, pr);
@@ -407,6 +667,11 @@
       el('rect', { x: 0, y: M.hTop, width: M.wall, height: (M.hBot - M.hTop) + 16, rx: 3, fill: C.shell }, shellG);
       el('rect', { x: M.w - M.wall, y: M.hTop, width: M.wall, height: (M.hBot - M.hTop) + 16, rx: 3, fill: C.shell }, shellG);
       el('rect', { x: M.wall, y: M.hBot - 3, width: M.w - 2 * M.wall, height: 3, fill: C.shellIn }, shellG);
+      // 2.5D depth: inner shading strips + lit top rims
+      el('rect', { x: M.wall, y: M.hTop + 2, width: 7, height: (M.hBot - M.hTop) - 2, fill: '#000000', opacity: 0.35 }, shellG);
+      el('rect', { x: M.w - M.wall - 7, y: M.hTop + 2, width: 7, height: (M.hBot - M.hTop) - 2, fill: '#ffffff', opacity: 0.08 }, shellG);
+      el('rect', { x: M.wall, y: M.hTop - 1, width: M.w - 2 * M.wall, height: 3, rx: 1.5, fill: '#5a4636', opacity: 0.9 }, shellG);
+      el('rect', { x: 2, y: M.hBot + 12, width: M.w - 4, height: 3, rx: 1.5, fill: '#191009', opacity: 0.7 }, shellG);
       // dynamic clip for fill/bar
       const clipId = 'moldFillClip' + 'ABC'[i];
       const cr = document.getElementById(clipId).firstChild;
@@ -418,15 +683,33 @@
       molds.push({ i, shellG, barG, fill, solid, sheen, clipRect: cr });
       shellG.setAttribute('opacity', 0);
       barG.setAttribute('opacity', 0);
+      // shelf decor: beveled chocolate squares + thickness + gloss (visible when landed)
+      const decor = el('g', { opacity: 0 }, pr);
+      const bw = M.w - 2 * M.wall, bx0 = 0, by0 = 0; // local coords, origin at bar top-left
+      el('rect', { x: bx0 + bw, y: by0 + 4, width: 6, height: 70, fill: 'url(#gChocoSide)', rx: 2 }, decor);
+      el('rect', { x: bx0 + 4, y: by0 + 74, width: bw, height: 5, fill: 'url(#gChocoSide)', rx: 2 }, decor);
+      for (let r2 = 0; r2 < 2; r2++) for (let c2 = 0; c2 < 3; c2++) {
+        const sx = bx0 + 7 + c2 * 38, sy = by0 + 7 + r2 * 30;
+        el('path', {
+          d: `M ${sx + 3} ${sy} H ${sx + 30} L ${sx + 33} ${sy + 3} V ${sy + 22} L ${sx + 30} ${sy + 25} H ${sx + 3} L ${sx} ${sy + 22} V ${sy + 3} Z`,
+          fill: '#6d4526', stroke: '#3c2410', 'stroke-width': 2
+        }, decor);
+        el('path', { d: `M ${sx + 3} ${sy + 3} L ${sx + 12} ${sy + 3} L ${sx + 6} ${sy + 9} Z`, fill: '#a5764a', opacity: 0.65 }, decor);
+      }
+      el('rect', { x: bx0 + 6, y: by0 + 3, width: 44, height: 4, rx: 2, fill: '#c89a6a', opacity: 0.5 }, decor);
+      molds[i].decor = decor;
     }
     V.els.molds = molds;
     // pour thread (per mold, above mold) — strictly between spout and mold surface
     const threads = [];
+    const threadHis = [];
     for (let i = 0; i < 3; i++) {
       const th = el('path', { d: '', fill: 'none', stroke: 'url(#gLiquid)', 'stroke-width': 10, 'stroke-linecap': 'round', opacity: 0 }, pr);
       threads.push(th);
+      const thi = el('path', { d: '', fill: 'none', stroke: '#c89a6a', 'stroke-width': 3, 'stroke-linecap': 'round', opacity: 0 }, pr);
+      threadHis.push(thi);
     }
-    V.els.threads = threads;
+    V.els.threads = threads; V.els.threadHis = threadHis;
     // splash rings
     const splash = [];
     for (let i = 0; i < 3; i++) {
@@ -451,16 +734,7 @@
   /* ================= EFFECTS ================= */
   function buildEffects() {
     const ef = V.els['layer-effects'];
-    // tank steam (3 puffs, deterministic loop)
-    const steam = [];
-    for (let i = 0; i < 3; i++) {
-      const g = el('g', { opacity: 0 }, ef);
-      el('ellipse', { cx: 0, cy: 0, rx: 26, ry: 14, fill: '#e8dcc8', opacity: 0.16 }, g);
-      el('ellipse', { cx: 10, cy: -12, rx: 16, ry: 9, fill: '#e8dcc8', opacity: 0.12 }, g);
-      steam.push({ g, seed: i * 77 });
-    }
-    V.els.steam = steam;
-    // roast shimmer above chimney
+    // roast shimmer above chimney (chimney smoke — physically outside, kept)
     const shim = el('g', { opacity: 0 }, ef);
     for (let i = 0; i < 3; i++) {
       el('ellipse', { cx: 0, cy: -i * 26, rx: 20 - i * 4, ry: 10 - i * 2, fill: '#e8dcc8', opacity: 0.10 }, shim);
@@ -596,13 +870,25 @@
   function buildHeroBar() {
     const g = V.els['hero-bar'];
     g.setAttribute('opacity', 0);
+    // soft contact shadow under the hero bar
+    el('ellipse', { cx: 540, cy: 1396, rx: 250, ry: 22, fill: '#000000', opacity: 0.38 }, g);
     const bar = el('g', {}, g);
+    // 2.5D thickness: right side + bottom side extrusion
+    el('path', { d: 'M 775 1128 L 789 1142 L 789 1372 L 775 1372 Z', fill: 'url(#gChocoSide)' }, bar);
+    el('path', { d: 'M 305 1372 L 775 1372 L 789 1386 L 319 1386 Z', fill: 'url(#gChocoSide)' }, bar);
     el('rect', { x: 305, y: 1128, width: 470, height: 244, rx: 20, fill: 'url(#gBar)', stroke: '#2e1a0c', 'stroke-width': 6 }, bar);
+    // beveled chocolate squares (chamfered corners + edge light + gloss)
     for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) {
-      el('rect', { x: 329 + c * 86, y: 1152 + r * 74, width: 70, height: 58, rx: 10, fill: '#6d4526', stroke: '#4a2c15', 'stroke-width': 3 }, bar);
-      el('rect', { x: 336 + c * 86, y: 1158 + r * 74, width: 40, height: 12, rx: 6, fill: '#8a5a33', opacity: 0.65 }, bar);
+      const x = 329 + c * 86, y = 1152 + r * 74;
+      el('path', {
+        d: `M ${x + 9} ${y} H ${x + 61} L ${x + 70} ${y + 9} V ${y + 49} L ${x + 61} ${y + 58} H ${x + 9} L ${x} ${y + 49} V ${y + 9} Z`,
+        fill: '#6d4526', stroke: '#4a2c15', 'stroke-width': 3
+      }, bar);
+      el('path', { d: `M ${x + 9} ${y + 6} L ${x + 24} ${y + 6} L ${x + 13} ${y + 17} Z`, fill: '#a5764a', opacity: 0.6 }, bar);
+      el('rect', { x: x + 14, y: y + 20, width: 38, height: 7, rx: 3.5, fill: '#8a5a33', opacity: 0.65 }, bar);
     }
     el('rect', { x: 320, y: 1140, width: 120, height: 10, rx: 5, fill: '#c89a6a', opacity: 0.5 }, bar);
+    el('rect', { x: 311, y: 1134, width: 458, height: 232, rx: 18, fill: 'url(#gGloss)', opacity: 0.55 }, bar);
     V.els.heroBarG = g;
   }
 

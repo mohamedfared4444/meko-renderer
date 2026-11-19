@@ -75,9 +75,9 @@ def main():
         log("CONCAT FAIL " + r.stderr[-400:]); sys.exit(4)
     log("concat done")
 
-    final = os.path.join(OUT, "ve2-phase1-fixed-v2.mp4")
+    final = os.path.join(OUT, "ve2-phase4-25d-enzo-sfx.mp4")
     r = run(["ffmpeg", "-y", "-v", "error", "-i", vpath,
-             "-i", os.path.join(OUT, "narration_mix.m4a"),
+             "-i", os.path.join(OUT, "narration_mix_phase4.m4a"),
              "-map", "0:v", "-map", "1:a",
              "-c", "copy", "-movflags", "+faststart", final], timeout=120)
     if r.returncode != 0:

@@ -1,0 +1,25 @@
+{
+  "caption_free_diff": [
+    {
+      "t": 13.6,
+      "frame": 408,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    },
+    {
+      "t": 35.5,
+      "frame": 1065,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    },
+    {
+      "t": 53.2,
+      "frame": 1596,
+      "mean_abs_diff": 0.0,
+      "pct_identical_pixels": 100.0
+    }
+  ],
+  "worst_mean_abs_diff": 0.0,
+  "pass": true,
+  "method": "frame-exact single-pass select extraction from both MP4s"
+}

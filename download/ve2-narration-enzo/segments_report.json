@@ -1,0 +1,67 @@
+{
+  "model": "gemini-3.8-flash-tts",
+  "voice": "Enzo",
+  "generated_at_utc": "2026-11-19T04:50:32Z",
+  "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: ",
+  "segments": [
+    {
+      "id": "seg1",
+      "text": "النهارده هنشوف الشوكولاتة بتتعمل إزاي من الصفر.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 3.76,
+      "dur": 3.921,
+      "size": 114167
+    },
+    {
+      "id": "seg2",
+      "text": "حبوب الكاكاو بتيجي من قرون شجرة الكاكاو، وبتوصلنا على سير النقل علطول.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 5.84,
+      "dur": 6.001,
+      "size": 156893
+    },
+    {
+      "id": "seg3",
+      "text": "قبل التحميص الحبات بتتنضف كويس، وبعدين بتدخل طبلية التحميص الساخنة اللي بتطلع منها النكهة الغنية.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 7.76,
+      "dur": 7.921,
+      "size": 204446
+    },
+    {
+      "id": "seg4",
+      "text": "وبعدين بتتطحن بين أسطانة حديد دوارة، بتتدوس الحبات لحد ما تبقى عجينة كاكاو سايحة.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 8.0,
+      "dur": 8.161,
+      "size": 209616
+    },
+    {
+      "id": "seg5",
+      "text": "وبعدين تيجي المعالجة والخلط، تقليب على مهل بيحول العجينة لشوكولاتة سايحة ناعمة.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 7.48,
+      "dur": 7.641,
+      "size": 202374
+    },
+    {
+      "id": "seg6",
+      "text": "الشوكولاتة السايحة بتتصب في القوالب، وبتعدى تونيل تبريد لحد ما تتماسك.",
+      "status": "FAILED"
+    },
+    {
+      "id": "seg7",
+      "text": "وبكده الألواح بتطلع جاهزة، من حبة كاكاو لقطعة شوكولاتة.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 6.0,
+      "dur": 6.161,
+      "size": 151494
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "model": "gemini-3.8-flash-tts",
   "voice": "Enzo",
-  "generated_at_utc": "2026-11-19T05:28:15Z",
+  "generated_at_utc": "2026-11-22T11:38:47Z",
   "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: ",
   "segments": [
     {
@@ -9,42 +9,54 @@
       "text": "النهارده هنشوف الشوكولاتة بتتعمل إزاي من الصفر.",
       "status": "OK",
       "rate": 24000,
-      "raw_dur": 3.64,
-      "dur": 3.801,
-      "size": 109726
+      "raw_dur": 4.36,
+      "dur": 4.152,
+      "size": 126229
     },
     {
       "id": "seg2",
       "text": "حبوب الكاكاو بتيجي من قرون شجرة الكاكاو، وبتوصلنا على سير النقل علطول.",
       "status": "OK",
       "rate": 24000,
-      "raw_dur": 6.12,
-      "dur": 6.281,
-      "size": 166098
+      "raw_dur": 5.8,
+      "dur": 5.501,
+      "size": 152894
     },
     {
       "id": "seg3",
       "text": "قبل التحميص الحبات بتتنضف كويس، وبعدين بتدخل طبلية التحميص الساخنة اللي بتطلع منها النكهة الغنية.",
       "status": "OK",
       "rate": 24000,
-      "raw_dur": 8.68,
-      "dur": 8.841,
-      "size": 231520
+      "raw_dur": 8.6,
+      "dur": 7.577,
+      "size": 205273
     },
     {
       "id": "seg4",
       "text": "وبعدين بتتطحن بين أسطانة حديد دوارة، بتتدوس الحبات لحد ما تبقى عجينة كاكاو سايحة.",
-      "status": "FAILED"
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 8.44,
+      "dur": 7.648,
+      "size": 205660
     },
     {
       "id": "seg5",
       "text": "وبعدين تيجي المعالجة والخلط، تقليب على مهل بيحول العجينة لشوكولاتة سايحة ناعمة.",
-      "status": "FAILED"
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 7.4,
+      "dur": 6.991,
+      "size": 197539
     },
     {
       "id": "seg6",
       "text": "الشوكولاتة السايحة بتتصب في القوالب، وبتعدى تونيل تبريد لحد ما تتماسك.",
-      "status": "FAILED"
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 6.36,
+      "dur": 6.176,
+      "size": 161030
     },
     {
       "id": "seg7",

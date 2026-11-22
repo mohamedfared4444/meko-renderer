@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meko.local/schemas/ve2-product-spec.schema.json",
+  "title": "Meko Visual Engine 2 — Product Spec v1",
+  "description": "Data-driven product specification for VE2 short-form videos. One spec file fully describes scenes, narration segments, audio policy and asset/output paths for a single product video, so no product text or scene labels are hardcoded in the engine. Consumed by tools/ve2_product_spec.py (loader/validator), tools/ve2_build_audio_phase4.py (--spec) and tools/gemini_tts_segments.py (VE2_PRODUCT_SPEC env).",
+  "type": "object",
+  "required": ["schema_version", "product", "voice", "video", "scenes", "narration", "audio_policy", "assets", "outputs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "product": {
+      "type": "object",
+      "required": ["id", "title_ar", "title_en", "language"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{1,40}$", "description": "slug used in file names and reports" },
+        "title_ar": { "type": "string", "minLength": 2, "description": "on-screen Arabic title card text" },
+        "pill_ar": { "type": "string", "minLength": 1, "description": "optional small subtitle pill under the title card" },
+        "title_en": { "type": "string", "minLength": 2 },
+        "language": { "enum": ["ar-EG", "ar", "en"] }
+      }
+    },
+    "voice": {
+      "type": "object",
+      "required": ["provider", "model", "name", "directive"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": { "enum": ["gemini"] },
+        "model": { "type": "string", "minLength": 3 },
+        "name": { "type": "string", "minLength": 2 },
+        "directive": { "type": "string", "minLength": 10, "description": "TTS style directive prepended to each segment text" }
+      }
+    },
+    "video": {
+      "type": "object",
+      "required": ["width", "height", "fps", "frames", "duration_s"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "integer", "minimum": 360 },
+        "height": { "type": "integer", "minimum": 360 },
+        "fps": { "type": "integer", "minimum": 24, "maximum": 60 },
+        "frames": { "type": "integer", "minimum": 1 },
+        "duration_s": { "type": "number", "exclusiveMinimum": 0, "description": "rounded timeline duration (frames/fps), written verbatim into ve2-audio-timeline.json" }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "num", "label", "start", "end"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^scene[0-9]+$" },
+          "num": { "type": "string", "pattern": "^[0-9]{2}$" },
+          "label": { "type": "string", "minLength": 3, "description": "scene label written verbatim into the timeline JSON (engine-agnostic English slug style)" },
+          "start": { "type": "number", "minimum": 0 },
+          "end": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "narration": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "scene", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^seg[0-9]+$" },
+          "scene": { "type": "string", "pattern": "^scene[0-9]+$", "description": "primary scene this segment narrates (template contract: seg1,seg2->scene1; seg3->scene2; seg4->scene3; seg5->scene4; seg6->scene5; seg7->scene6)" },
+          "text": { "type": "string", "minLength": 5, "description": "narration line, exact TTS prompt text" },
+          "caption_groups": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+            ],
+            "description": "optional explicit caption rhythm groups (word groups shown together); null = automatic word-level captions"
+          }
+        }
+      }
+    },
+    "audio_policy": {
+      "type": "object",
+      "required": ["lead_s", "gap_seg1_seg2_s", "anchors_s", "post_cut_offset_s", "pause_keep_s", "min_precut_buffer_s", "min_postcut_resume_s"],
+      "additionalProperties": false,
+      "properties": {
+        "lead_s": { "type": "number", "minimum": 0.3, "maximum": 5.0, "description": "cinematic open before seg1" },
+        "gap_seg1_seg2_s": { "type": "number", "minimum": 0.2, "maximum": 5.0, "description": "within-scene gap seg1 -> seg2" },
+        "anchors_s": {
+          "type": "object",
+          "additionalProperties": { "type": "number" },
+          "description": "frozen narration anchor(s), e.g. {\"seg5\": 37.15}"
+        },
+        "post_cut_offset_s": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0.1, "maximum": 3.0 },
+          "description": "resume offset after a scene cut, e.g. {\"seg7\": 0.26}"
+        },
+        "pause_keep_s": {
+          "type": "object",
+          "additionalProperties": { "oneOf": [{ "type": "null" }, { "type": "number", "minimum": 0.05, "maximum": 2.0 }] },
+          "description": "per-segment internal-pause cap; missing segments = keep natural TTS pauses (null)"
+        },
+        "min_precut_buffer_s": { "type": "number", "minimum": 0.15, "maximum": 2.0 },
+        "min_postcut_resume_s": { "type": "number", "minimum": 0.05, "maximum": 2.0 }
+      }
+    },
+    "banners": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "optional on-screen scene banners (engine side, consumed from Phase 5 step 2 onward); windows must match the corresponding scenes",
+      "items": {
+        "type": "object",
+        "required": ["num", "label_ar", "t0", "t1"],
+        "additionalProperties": false,
+        "properties": {
+          "num": { "type": "string", "pattern": "^[0-9]{2}$" },
+          "label_ar": { "type": "string", "minLength": 1 },
+          "t0": { "type": "number", "minimum": 0 },
+          "t1": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "required": ["narration_dir", "segments_report", "flac_pattern"],
+      "additionalProperties": false,
+      "properties": {
+        "narration_dir": { "type": "string", "minLength": 1, "description": "TTS output dir, relative to VE2_ROOT" },
+        "segments_report": { "type": "string", "minLength": 1 },
+        "flac_pattern": { "type": "string", "pattern": "\\{id\\}", "description": "per-segment audio file name pattern, e.g. {id}_Enzo.flac" }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "required": ["audio_timeline", "timeline_js"],
+      "additionalProperties": false,
+      "properties": {
+        "audio_timeline": { "type": "string", "minLength": 1 },
+        "timeline_js": { "type": "string", "minLength": 1 },
+        "final_video": { "type": "string" }
+      }
+    },
+    "frozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "optional regression baseline for an approved build: the loader/checks compare fresh outputs against it",
+      "required": [],
+      "properties": {
+        "note": { "type": "string" },
+        "placements_s": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        },
+        "ends_at_s": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        },
+        "output_md5": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{32}$" }
+        }
+      }
+    }
+  }
+}

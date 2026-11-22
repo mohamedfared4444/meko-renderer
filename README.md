@@ -38,3 +38,25 @@ python encode_chunks.py    # يدمج عبر FFmpeg -> output/ve2-phase1-fixed-v
 - كل التعديلات تتم حصرياً على هذا الفرع.
 - لا تُرفع أبداً: `.env`، ملفات `*.mp4`، مجلدات المخرجات، أي مفاتيح
   أو credentials — فقط الكود المصدري وخطوط Tajawal.
+
+## Phase 5 — مواصفة المنتج المعتمدة بالبيانات (Step 1)
+
+منذ Phase 5 Step 1 أصبح المنتج موصوفًا في ملف spec واحد
+(`tools/products/*.json`) يُدقَّق مقابل JSON Schema، وتقرأ منه أدوات
+البناء نصوص السرد والمشاهد وسياسة الصوت — لا يوجد أي نص منتج داخل الكود.
+
+| المسار | الغرض |
+| --- | --- |
+| `tools/products/chocolate.json` | البريسِت المعتمد (الشوكولاتة) مع خط أساس الانحدار (frozen md5s) |
+| `tools/products/coffee.json` / `soap.json` | منتجان نموذجيان (عربي مصري) |
+| `tools/schemas/ve2-product-spec.schema.json` | JSON Schema للتنسيق |
+| `tools/ve2_product_spec.py` | اللودر/المدقق + اشتقاق سياسة الصوت + `check-chocolate` |
+
+```bash
+python3 tools/ve2_product_spec.py validate tools/products/coffee.json
+python3 tools/ve2_product_spec.py check-chocolate   # حارس انحدار البناء المعتمد
+python3 tools/ve2_build_audio_phase4.py --spec tools/products/<id>.json
+```
+
+التفاصيل الكاملة وإثبات عدم الانحدار (md5s طابقة بايت-ببايت) في
+`tools/products/README.md`.

@@ -75,6 +75,22 @@ SEGMENTS = [
     ("seg7", "وبكده الألواح بتطلع جاهزة، من حبة كاكاو لقطعة شوكولاتة."),
 ]
 
+# PHASE 5 STEP 1: optional product-spec source. When $VE2_PRODUCT_SPEC
+# points to a product spec JSON (validated by tools/ve2_product_spec.py),
+# the segment texts + voice/model/directive come from the spec instead of
+# the legacy chocolate defaults above — so a new product is narrated with
+# zero code changes. Default behaviour (no env var) is unchanged.
+_PRODUCT_SPEC = os.environ.get("VE2_PRODUCT_SPEC", "")
+if _PRODUCT_SPEC:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import ve2_product_spec as _vps
+
+    _spec = _vps.load_spec(_PRODUCT_SPEC)
+    SEGMENTS = _vps.spec_texts(_spec)
+    MODEL = _spec["voice"]["model"]
+    VOICE = _spec["voice"]["name"]
+    DIRECTIVE = _spec["voice"]["directive"]
+
 
 def red(s: str) -> str:
     s = re.sub(r"AIza[0-9A-Za-z_\-]{3,}", "AIza[REDACTED]", s)

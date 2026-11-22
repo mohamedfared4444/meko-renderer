@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "product": {
+    "id": "coffee",
+    "title_ar": "كيف بتتعمل قهوة الفنجان",
+    "pill_ar": "من الحبة للفنجان",
+    "title_en": "How coffee is made (bean to cup)",
+    "language": "ar-EG"
+  },
+  "voice": {
+    "provider": "gemini",
+    "model": "gemini-3.8-flash-tts",
+    "name": "Enzo",
+    "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: "
+  },
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "frames": 1740,
+    "duration_s": 58.0
+  },
+  "scenes": [
+    { "id": "scene1", "num": "01", "label": "01 title over green coffee hills + cherry picking conveyor", "start": 0.0, "end": 13.5 },
+    { "id": "scene2", "num": "02", "label": "02 washing channels & drying terraces cutaway", "start": 13.5, "end": 22.8 },
+    { "id": "scene3", "num": "03", "label": "03 roasting drum first-crack cutaway", "start": 22.8, "end": 33.4 },
+    { "id": "scene4", "num": "04", "label": "04 grinding burrs closeup", "start": 33.4, "end": 41.2 },
+    { "id": "scene5", "num": "05", "label": "05 espresso extraction & crema pour", "start": 41.2, "end": 51.0 },
+    { "id": "scene6", "num": "06", "label": "06 latte art pullback", "start": 51.0, "end": 54.2 },
+    { "id": "scene7", "num": "07", "label": "07 final wide reveal (bean to cup)", "start": 54.2, "end": 58.0 }
+  ],
+  "narration": [
+    { "id": "seg1", "scene": "scene1", "text": "النهارده هنعرف قهوة الفنجان بتتعمل إزاي من الحبة الخضرا لحد كوباية سخنة.", "caption_groups": null },
+    { "id": "seg2", "scene": "scene1", "text": "حبات القهوة بتنمو في المرتفعات، وبتتقطف يدوي لما تبقى حمرا زي الكرز.", "caption_groups": null },
+    { "id": "seg3", "scene": "scene2", "text": "بعد القطف الحبات بتغسل كويس، وبتتنشر على سطوح خشب في الشمس لحد ما تجف تماماً.", "caption_groups": null },
+    { "id": "seg4", "scene": "scene3", "text": "وبعدين الحبة الخضرا بتدخل طبلية التحميص على نار مظبوطة، وتبدأ ريحة القهوة تطلع على بره.", "caption_groups": null },
+    { "id": "seg5", "scene": "scene4", "text": "وبعدين بتتطحن بين سنون حديد، على درجة الطحن اللي تناسب نوع القهوة اللي هنجهزها.", "caption_groups": null },
+    { "id": "seg6", "scene": "scene5", "text": "البودرة بتتنضغط في البورافيلتر، والمية السخنة بتعدي بيها بضغط عالي، فيطلع إسبريسو بكريمة غنية.", "caption_groups": null },
+    { "id": "seg7", "scene": "scene6", "text": "وبكده فنجان القهوة جاهز، من حبة خضرا لكوباية بتفتح النفس.", "caption_groups": ["وبكده فنجان", "القهوة جاهزة", "من حبة", "خضرا", "لكوباية", "بتفتح النفس"] }
+  ],
+  "audio_policy": {
+    "lead_s": 1.4,
+    "gap_seg1_seg2_s": 0.8,
+    "anchors_s": { "seg5": 33.9 },
+    "post_cut_offset_s": { "seg7": 0.28 },
+    "pause_keep_s": { "seg4": 0.25 },
+    "min_precut_buffer_s": 0.35,
+    "min_postcut_resume_s": 0.20
+  },
+  "banners": [
+    { "num": "02", "label_ar": "الغسيل والتجفيف", "t0": 13.5, "t1": 22.8 },
+    { "num": "03", "label_ar": "التحميص", "t0": 22.8, "t1": 33.4 },
+    { "num": "04", "label_ar": "الطحن", "t0": 33.4, "t1": 41.2 },
+    { "num": "05", "label_ar": "الاستخلاص", "t0": 41.2, "t1": 51.0 }
+  ],
+  "assets": {
+    "narration_dir": "download/ve2-narration-coffee",
+    "segments_report": "segments_report.json",
+    "flac_pattern": "{id}_Enzo.flac"
+  },
+  "outputs": {
+    "audio_timeline": "download/ve2-audio-timeline.json",
+    "timeline_js": "scene/timeline.js"
+  }
+}

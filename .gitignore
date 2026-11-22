@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 output/
 scene/
+
+# python bytecode
+tools/__pycache__/

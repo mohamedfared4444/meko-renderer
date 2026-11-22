@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "product": {
+    "id": "chocolate",
+    "title_ar": "كيف تُصنع الشوكولاتة",
+    "pill_ar": "من الصفر",
+    "title_en": "How chocolate is made (bean to bar)",
+    "language": "ar-EG"
+  },
+  "voice": {
+    "provider": "gemini",
+    "model": "gemini-3.8-flash-tts",
+    "name": "Enzo",
+    "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: "
+  },
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "frames": 1819,
+    "duration_s": 60.6333
+  },
+  "scenes": [
+    {
+      "id": "scene1",
+      "num": "01",
+      "label": "01 title over production line + raw cocoa beans conveyor",
+      "start": 0.0,
+      "end": 14.35
+    },
+    {
+      "id": "scene2",
+      "num": "02",
+      "label": "02 roasting drum cutaway",
+      "start": 14.35,
+      "end": 24.85
+    },
+    {
+      "id": "scene3",
+      "num": "03",
+      "label": "03 grinding into cocoa paste (steel rollers cutaway)",
+      "start": 24.85,
+      "end": 36.9
+    },
+    {
+      "id": "scene4",
+      "num": "04",
+      "label": "04 smooth liquid chocolate (conching tank)",
+      "start": 36.9,
+      "end": 44.17
+    },
+    {
+      "id": "scene5",
+      "num": "05",
+      "label": "05 molding & cooling",
+      "start": 44.17,
+      "end": 54.4
+    },
+    {
+      "id": "scene6",
+      "num": "06",
+      "label": "06 demolding pullback",
+      "start": 54.4,
+      "end": 55.9
+    },
+    {
+      "id": "scene7",
+      "num": "07",
+      "label": "07 final wide reveal (bean to bar)",
+      "start": 55.9,
+      "end": 60.6333
+    }
+  ],
+  "narration": [
+    {
+      "id": "seg1",
+      "scene": "scene1",
+      "text": "النهارده هنشوف الشوكولاتة بتتعمل إزاي من الصفر.",
+      "caption_groups": null
+    },
+    {
+      "id": "seg2",
+      "scene": "scene1",
+      "text": "حبوب الكاكاو بتيجي من قرون شجرة الكاكاو، وبتوصلنا على سير النقل علطول.",
+      "caption_groups": null
+    },
+    {
+      "id": "seg3",
+      "scene": "scene2",
+      "text": "قبل التحميص الحبات بتتنضف كويس، وبعدين بتدخل طبلية التحميص الساخنة اللي بتطلع منها النكهة الغنية.",
+      "caption_groups": null
+    },
+    {
+      "id": "seg4",
+      "scene": "scene3",
+      "text": "وبعدين بتتطحن بين أسطانة حديد دوارة، بتتدوس الحبات لحد ما تبقى عجينة كاكاو سايحة.",
+      "caption_groups": null
+    },
+    {
+      "id": "seg5",
+      "scene": "scene4",
+      "text": "وبعدين تيجي المعالجة والخلط، تقليب على مهل بيحول العجينة لشوكولاتة سايحة ناعمة.",
+      "caption_groups": null
+    },
+    {
+      "id": "seg6",
+      "scene": "scene5",
+      "text": "الشوكولاتة السايحة بتتصب في القوالب، وبتعدى تونيل تبريد لحد ما تتماسك.",
+      "caption_groups": null
+    },
+    {
+      "id": "seg7",
+      "scene": "scene6",
+      "text": "وبكده الألواح بتطلع جاهزة، من حبة كاكاو لقطعة شوكولاتة.",
+      "caption_groups": [
+        "وبكده الألواح",
+        "بتطلع جاهزة",
+        "من حبة",
+        "كاكاو",
+        "لقطعة",
+        "شوكولاتة"
+      ]
+    }
+  ],
+  "audio_policy": {
+    "lead_s": 1.6,
+    "gap_seg1_seg2_s": 0.72,
+    "anchors_s": {
+      "seg5": 37.15
+    },
+    "post_cut_offset_s": {
+      "seg7": 0.26
+    },
+    "pause_keep_s": {
+      "seg5": 0.22,
+      "seg7": 0.24
+    },
+    "min_precut_buffer_s": 0.35,
+    "min_postcut_resume_s": 0.2
+  },
+  "banners": [
+    {
+      "num": "02",
+      "label_ar": "التحميص",
+      "t0": 14.35,
+      "t1": 24.85
+    },
+    {
+      "num": "03",
+      "label_ar": "الطحن",
+      "t0": 24.85,
+      "t1": 36.9
+    },
+    {
+      "num": "04",
+      "label_ar": "المعالجة والخلط",
+      "t0": 36.9,
+      "t1": 44.17
+    },
+    {
+      "num": "05",
+      "label_ar": "الصب والتبريد",
+      "t0": 44.17,
+      "t1": 54.4
+    }
+  ],
+  "assets": {
+    "narration_dir": "download/ve2-narration-enzo",
+    "segments_report": "segments_report.json",
+    "flac_pattern": "{id}_Enzo.flac"
+  },
+  "outputs": {
+    "audio_timeline": "download/ve2-audio-timeline.json",
+    "timeline_js": "scene/timeline.js",
+    "final_video": "download/ve2-phase4-25d-enzo-sfx.mp4"
+  },
+  "frozen": {
+    "note": "approved Phase-4.4 build (commits 8b1a952 + e364e10); placements/ends_at and output md5s are the regression baseline - do not edit",
+    "placements_s": {
+      "seg1": 1.6,
+      "seg2": 5.986,
+      "seg3": 14.939,
+      "seg4": 26.392,
+      "seg5": 37.15,
+      "seg6": 45.948,
+      "seg7": 54.66
+    },
+    "ends_at_s": {
+      "seg1": 5.266,
+      "seg2": 12.132,
+      "seg3": 23.585,
+      "seg4": 34.343,
+      "seg5": 43.701,
+      "seg6": 52.414,
+      "seg7": 60.046
+    },
+    "output_md5": {
+      "audio_timeline": "46df7fe817e08aa30a093b113acfa9e1",
+      "narration_mix": "785989aaf9982571039764d183a2606c",
+      "audio_verify": "994bd9c433c74e8393527960f68da9ef",
+      "timeline_js": "275e319aa254052287528f995d7a0e74"
+    }
+  }
+}

@@ -90,6 +90,7 @@ PART B (SFX): DISABLED in Phase 4.1 (kept for reference/history).
 Outputs: download/ve2-audio-timeline.json (+ timeline.js rebuild),
          output/audio/narration_mix_phase4.m4a, verify report JSON.
 """
+import argparse
 import json
 import math
 import os
@@ -99,13 +100,14 @@ import sys
 
 import numpy as np
 
-ROOT = "/home/z/my-project/visual-engine-2"
-SRC = os.path.join(ROOT, "download/ve2-narration-enzo")
+# PHASE 5 STEP 1: VE2_ROOT / VE2_DL env overrides (defaults unchanged) let
+# the whole build run against an isolated sandbox for byte-identical
+# regression verification without touching the live workspace.
+ROOT = os.environ.get("VE2_ROOT", "/home/z/my-project/visual-engine-2")
 AUD = os.path.join(ROOT, "output/audio")
-DL = "/home/z/my-project/download"
+DL = os.environ.get("VE2_DL", "/home/z/my-project/download")
 DLB = os.path.join(ROOT, "download")
 SR = 48000
-VIDEO_DUR = 1819 / 30.0  # 60.63333...
 
 SPEECH_TH_DB = -45.0
 MIN_BURST = 0.08
@@ -113,22 +115,21 @@ GAP_MIN = 0.14
 SNAP = 0.18
 ATEMP_MIN, ATEMP_MAX = 1.02, 1.06
 
-# scene cuts (frozen visual timeline)
-CUTS = {"scene2": 14.35, "scene3": 24.85, "scene4": 36.90,
-        "scene5": 44.17, "scene6": 54.40, "scene7": 55.90}
-
-# frozen narration anchors (kept from the approved Phase-2 design)
-S5_ANCHOR = 37.15          # conching narration starts 0.25 s after cut3
-POST5 = 0.26               # seg7 resumes 0.26 s after the demold cut
-LEAD = 1.60                # cinematic open before seg1
-G12 = 0.72                 # within-scene gap seg1 -> seg2
-
-# per-segment internal-pause policy: None = keep Enzo natural
-PAUSE_KEEP = {"seg1": None, "seg2": None, "seg3": None, "seg4": None,
-              "seg5": 0.22, "seg6": None, "seg7": 0.24}
-
-SEG7_GROUPS = ["وبكده الألواح", "بتطلع جاهزة", "من حبة", "كاكاو",
-               "لقطعة", "شوكولاتة"]
+# PHASE 5 STEP 1 — data-driven product spec: scene cuts, narration anchors,
+# pause caps, caption groups, scene labels and video meta now live in the
+# PRODUCT SPEC (default: tools/products/chocolate.json; override with
+# --spec / $VE2_PRODUCT_SPEC), validated by tools/ve2_product_spec.py.
+# Legacy chocolate values replaced by the spec (all frozen in its approved
+# regression baseline: placements + output md5s):
+#   CUTS = {"scene2": 14.35, "scene3": 24.85, "scene4": 36.90,
+#           "scene5": 44.17, "scene6": 54.40, "scene7": 55.90}
+#   S5_ANCHOR = 37.15 | POST5 = 0.26 | LEAD = 1.60 | G12 = 0.72
+#   PAUSE_KEEP = {seg5: 0.22, seg7: 0.24} | seg7 caption groups
+# Engine DSP policy (below) stays in code — it is not product data.
+SPEC_PATH_DEFAULT = os.environ.get(
+    "VE2_PRODUCT_SPEC",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                 "products", "chocolate.json"))
 
 # deterministic SFX seed (fixed forever — byte-identical mixes)
 SFX_SEED = 987126
@@ -588,10 +589,40 @@ def normalize_db(a_stereo, target_db):
 
 # ======================================================================
 def main():
+    ap = argparse.ArgumentParser(
+        description="VE2 phase-4 audio build (product-spec driven, Phase 5)")
+    ap.add_argument("--spec", default=SPEC_PATH_DEFAULT,
+                    help="product spec JSON (default: chocolate preset)")
+    args = ap.parse_args()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import ve2_product_spec as vps
+    spec = vps.load_spec(args.spec)
+    pol = vps.audio_policy(spec)
+    groups_by_sid = pol["groups_by_sid"]
+    # legacy product constants, now derived from the validated spec
+    CUTS = pol["cuts"]
+    S5_ANCHOR = pol["anchor_seg5"]
+    POST5 = pol["post5"]
+    LEAD = pol["lead"]
+    G12 = pol["g12"]
+    PAUSE_KEEP = pol["pause_keep"]
+    VIDEO_DUR = pol["video_dur_exact"]
+    DUR_JSON = pol["duration_json"]
+    src_dir = os.path.join(ROOT, spec["assets"]["narration_dir"])
+
     os.makedirs(AUD, exist_ok=True)
-    rep = json.load(open(os.path.join(SRC, "segments_report.json")))
+    rep = json.load(open(os.path.join(src_dir,
+                                      spec["assets"]["segments_report"])))
     texts = {s["id"]: s["text"] for s in rep["segments"]}
     order = [s["id"] for s in rep["segments"]]
+    # template contract: the TTS report must match the spec exactly
+    assert order == pol["order"], \
+        f"segments_report order {order} != spec narration {pol['order']}"
+    stale = [sid for sid in order
+             if texts[sid] != dict(vps.spec_texts(spec))[sid]]
+    if stale:
+        print(f"!! segments_report.json texts differ from the spec: {stale}")
+        sys.exit(5)
 
     report = {"phase": 4, "sub_phase": "4.4", "windows": [],
               "processing": [], "placements": [],
@@ -605,7 +636,8 @@ def main():
     lock_samples = {}
     word_src = {}
     for sid in order:
-        a = load_flac_mono(os.path.join(SRC, f"{sid}_Enzo.flac"))
+        a = load_flac_mono(os.path.join(
+            src_dir, spec["assets"]["flac_pattern"].format(id=sid)))
         raw_dur = len(a) / SR
         note = {"id": sid, "raw_dur": round(raw_dur, 3)}
         # 4.4 reference chain: the untouched 4.3 processing of the same
@@ -613,7 +645,8 @@ def main():
         # word-timing source, so ve2-audio-timeline.json stays
         # byte-identical to 4.1/4.2/4.3 (last-word caption ends keep
         # their frozen times by explicit task requirement).
-        a43 = load_flac_mono(os.path.join(SRC, f"{sid}_Enzo.flac"))
+        a43 = load_flac_mono(os.path.join(
+            src_dir, spec["assets"]["flac_pattern"].format(id=sid)))
         a43, _, _ = trim_edges(a43, pad=0.08)
         keep = PAUSE_KEEP[sid]
         if keep is not None:
@@ -713,7 +746,7 @@ def main():
         "seg7": round(CUTS["scene6"] + POST5, 3),
     }
     e = {sid: round(s[sid] + d[sid], 3) for sid in order}
-    assert e["seg7"] <= 60.6333 - 0.30, \
+    assert e["seg7"] <= DUR_JSON - 0.30, \
         f"seg7 overruns: e7={e['seg7']:.3f}"
     # safety: pre-cut buffers at every scene cut
     for cut, prev, nxt in ((CUTS["scene2"], "seg2", "seg3"),
@@ -722,25 +755,14 @@ def main():
                            (CUTS["scene5"], "seg5", "seg6"),
                            (CUTS["scene6"], "seg6", "seg7")):
         pre_buf = cut - e[prev]
-        assert pre_buf >= 0.35, f"pre-cut buffer {prev}->{cut}: {pre_buf:.3f}"
+        assert pre_buf >= pol["min_precut"], \
+            f"pre-cut buffer {prev}->{cut}: {pre_buf:.3f}"
         post_buf = s[nxt] - cut
-        assert post_buf >= 0.20, f"post-cut resume {cut}->{nxt}: {post_buf:.3f}"
+        assert post_buf >= pol["min_postcut"], \
+            f"post-cut resume {cut}->{nxt}: {post_buf:.3f}"
 
-    SCENES = [
-        {"name": "01 title over production line + raw cocoa beans conveyor",
-         "start": 0.0, "end": CUTS["scene2"]},
-        {"name": "02 roasting drum cutaway", "start": CUTS["scene2"],
-         "end": CUTS["scene3"]},
-        {"name": "03 grinding into cocoa paste (steel rollers cutaway)",
-         "start": CUTS["scene3"], "end": CUTS["scene4"]},
-        {"name": "04 smooth liquid chocolate (conching tank)",
-         "start": CUTS["scene4"], "end": CUTS["scene5"]},
-        {"name": "05 molding & cooling", "start": CUTS["scene5"],
-         "end": 54.4},
-        {"name": "06 demolding pullback", "start": 54.4, "end": 55.9},
-        {"name": "07 final wide reveal (bean to bar)", "start": 55.9,
-         "end": 60.6333},
-    ]
+    # scene list comes verbatim from the validated product spec
+    SCENES = pol["scenes_list"]
 
     print("[placements]")
     for sid in order:
@@ -749,7 +771,7 @@ def main():
     for a_id, b_id in zip(order, order[1:]):
         gaps_calc[f"{a_id}->{b_id}"] = round(s[b_id] - e[a_id], 3)
     gaps_calc["lead_in"] = s["seg1"]
-    gaps_calc["tail_out"] = round(60.6333 - e["seg7"], 3)
+    gaps_calc["tail_out"] = round(DUR_JSON - e["seg7"], 3)
     print("[gaps]", json.dumps(gaps_calc))
     report["placements"] = [{"id": sid, "start": s[sid], "end": e[sid],
                              "dur": round(d[sid], 3)} for sid in order]
@@ -778,13 +800,14 @@ def main():
         words_total += len(wt)
         seg = {"id": sid, "text": text, "placement": s[sid],
                "ends_at": e[sid], "words": wt}
-        if sid == "seg7":
-            seg["groups"] = SEG7_GROUPS
+        if sid in groups_by_sid:
+            seg["groups"] = groups_by_sid[sid]
         segments.append(seg)
 
     timeline = {
-        "video": {"duration": 60.6333, "fps": 30, "frames": 1819,
-                  "width": 1080, "height": 1920},
+        "video": {"duration": DUR_JSON, "fps": pol["fps"],
+                  "frames": pol["frames"], "width": pol["width"],
+                  "height": pol["height"]},
         "scenes": SCENES,
         "segments": segments,
     }

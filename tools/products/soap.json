@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "product": {
+    "id": "soap",
+    "title_ar": "كيف بتتعمل الصابون",
+    "pill_ar": "من الزيوت للصابون",
+    "title_en": "How natural soap is made (oil to bar)",
+    "language": "ar-EG"
+  },
+  "voice": {
+    "provider": "gemini",
+    "model": "gemini-3.8-flash-tts",
+    "name": "Enzo",
+    "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: "
+  },
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "frames": 1860,
+    "duration_s": 62.0
+  },
+  "scenes": [
+    { "id": "scene1", "num": "01", "label": "01 title over olive grove + oil blending vats", "start": 0.0, "end": 13.0 },
+    { "id": "scene2", "num": "02", "label": "02 oil blending & gentle heating cutaway", "start": 13.0, "end": 22.5 },
+    { "id": "scene3", "num": "03", "label": "03 lye mixing & saponification trace", "start": 22.5, "end": 33.8 },
+    { "id": "scene4", "num": "04", "label": "04 pouring into wooden molds", "start": 33.8, "end": 42.6 },
+    { "id": "scene5", "num": "05", "label": "05 curing racks & wire cutting", "start": 42.6, "end": 53.5 },
+    { "id": "scene6", "num": "06", "label": "06 stamping pullback", "start": 53.5, "end": 56.8 },
+    { "id": "scene7", "num": "07", "label": "07 final wide reveal (oil to bar)", "start": 56.8, "end": 62.0 }
+  ],
+  "narration": [
+    { "id": "seg1", "scene": "scene1", "text": "النهارده هنشوف الصابون الطبيعي بيعمل إزاي من الزيوت النباتية.", "caption_groups": null },
+    { "id": "seg2", "scene": "scene1", "text": "زيوت الزيتون وجوز الهند بتتجمع في أحواض كبيرة، وبتتخلط بنسب مظبوطة.", "caption_groups": null },
+    { "id": "seg3", "scene": "scene2", "text": "الزيوت بتتسخن بهدوء، وبتتقلب على مهل لحد ما الخليط يبقى متجانس تماماً.", "caption_groups": null },
+    { "id": "seg4", "scene": "scene3", "text": "وبعدين بتيجي مرحلة التصبن، الزيوت بتتخلط بمحلول قلوي بهدوء، والخليط يبدأ يثقل شوية بشوية.", "caption_groups": null },
+    { "id": "seg5", "scene": "scene4", "text": "الخليط بيتصب في قوالب خشب، بيتمطار كويس، ويتغطى عشان يكتمل في دفء.", "caption_groups": null },
+    { "id": "seg6", "scene": "scene5", "text": "بعد ما يتجمد بيتقطع بأسلاك لقطع متساوية، وبتتنشر على أرفف التجفيف لأسابيع.", "caption_groups": null },
+    { "id": "seg7", "scene": "scene6", "text": "وبكده قطعة الصابون جاهزة، من زيت زيتون لقطعة بتنتفي.", "caption_groups": null }
+  ],
+  "audio_policy": {
+    "lead_s": 1.5,
+    "gap_seg1_seg2_s": 0.75,
+    "anchors_s": { "seg5": 34.3 },
+    "post_cut_offset_s": { "seg7": 0.30 },
+    "pause_keep_s": {},
+    "min_precut_buffer_s": 0.35,
+    "min_postcut_resume_s": 0.20
+  },
+  "banners": [
+    { "num": "02", "label_ar": "خلط الزيوت", "t0": 13.0, "t1": 22.5 },
+    { "num": "03", "label_ar": "التصبن", "t0": 22.5, "t1": 33.8 },
+    { "num": "04", "label_ar": "الصب في القوالب", "t0": 33.8, "t1": 42.6 },
+    { "num": "05", "label_ar": "التجفيف والتقطيع", "t0": 42.6, "t1": 53.5 }
+  ],
+  "assets": {
+    "narration_dir": "download/ve2-narration-soap",
+    "segments_report": "segments_report.json",
+    "flac_pattern": "{id}_Enzo.flac"
+  },
+  "outputs": {
+    "audio_timeline": "download/ve2-audio-timeline.json",
+    "timeline_js": "scene/timeline.js"
+  }
+}

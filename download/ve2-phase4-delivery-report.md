@@ -201,3 +201,70 @@ After the Phase 4.1 SFX removal the user STILL heard a soft "هششش" between n
 - The mix is now **pure narration**: no music, no SFX. If a future pass wants ambience back, the pad must be redesigned with gap-safe envelopes (e.g., level-locked under −50 dB in narration gaps, no chord-boundary ramps) — flip `MUSIC_ENABLED` only then.
 - AAC overshoot is strongly non-monotonic for this content (−0.12 dB → −1.14 dBFS but −0.30 dB → −2.13 dBFS), which is why the ladder uses 0.06 dB steps around the target.
 - Two build runs hit the sandbox's 590/600 s shell timeout at the very END of the run (log complete, `AUDIO_BUILD_OK` printed, artifacts flushed); a re-mux verification command also returned exit −9 (SIGKILL) after printing all results. No data was affected.
+
+---
+
+# Phase 4.3 — Raw gain-staged test: dynamics chain OFF ("هششش / TV-switch" residual fix)
+
+**Commit:** this section · **Date:** 2026-11-22 · **Parent:** `44913a9` (Phase 4.2)
+
+## User report
+
+Even with `SFX_ENABLED = False` (4.1) and `MUSIC_ENABLED = False` (4.2) the user STILL heard a "هششش" between sentences — a sound like a TV signal cutting or a TV powering off. With both non-speech buses already IEEE-exact digital silence, the only remaining suspect on the narration bus was the **dynamics chain**: `compress()` ran **FIVE cascaded passes** (threshold −19 dB, ratio 3.0, 200 ms release) and `peak_limiter()` (3 ms lookahead, 120 ms release) at ceiling 0.794.
+
+## Root-cause analysis (staging probe, `scripts/ve2_probe_crest.py`)
+
+Reproducing the 4.2 staging gain (+3.61 dB → speech mean −16.0 dB) on the raw placed narration bus gives a **TRUE peak of +7.50 dBFS** (crest factor **23.5 dB**). In 4.2 that meant:
+
+- the limiter was taking **~9.5 dB of gain reduction** at every speech peak;
+- its **120 ms release rode the gain back up** through every inter-sentence gap and modulated every decaying tail (sibilants, room-tone tails) — the classic pump/breath that reads as "هششش / TV cut";
+- the compressor added five more 200 ms-release pumping layers on top.
+
+## Change set (`tools/ve2_build_audio_phase4.py`)
+
+1. `COMPRESSOR_ENABLED = False` and `LIMITER_ENABLED = False` (new flags; `SFX_ENABLED = False` and `MUSIC_ENABLED = False` unchanged). The 4.2 chain is kept behind the flags for reference/history.
+2. `nar_lim` is now built by **clean linear gain staging only**: ONE static staging gain (speech-mean target −16 dB, same +3.61 dB as before) followed by ONE static headroom trim that parks the bus TRUE peak at `HEADROOM_CEIL_DBFS = -2.0` dBFS. The entire bus is a single constant scale (`x * k`) — **zero dynamic processing anywhere**, so no gain-reduction release tail can physically exist between sentences.
+3. 20 ms raised-cosine micro-fades at every segment edge (unchanged from 4.2, mix bus only).
+4. Speech-mean spec made phase-aware: linear mode accepts the deliberate quiet mix with a sanity floor of −32 dB (the raw crest penalty is expected); the legacy chain keeps the strict [−18, −16] band.
+5. AAC ladder unchanged — pins the decoded true peak in [−1.90, −1.30] dBFS, zero clipping by construction.
+6. Unchanged by design (md5-proven below): segment placements, word timings, `ve2-audio-timeline.json`, `timeline.js`, 2.5D frames.
+
+## Measurements (raw gain-staged Enzo narration mix)
+
+| Metric | Phase 4.2 (dynamics) | **Phase 4.3 (linear)** | Spec |
+|---|---|---|---|
+| Narration bus mode | limited (5×comp + limiter) | **linear (x × k, no dynamics)** | no pumping ✔ |
+| Raw peak after staging gain | +7.50 dBFS (limiter input) | **+7.50 dBFS → trimmed −9.5 dB** | headroom ✔ |
+| Speech mean (bus) | −16.80 dB | **−25.50 dB** (linear crest penalty, deliberate) | ≥ −32 dB sanity ✔ |
+| Pre-encode mix peak | −2.00 dBFS (limiter ceiling) | **−2.00 dBFS (static trim)** | no dynamics ✔ |
+| AAC decoded peak (true per-ch) | −1.48 dBFS | **−1.60 dBFS** (abs max 0.831854) | −1.3…−2.0 dBFS ✔ |
+| MP4 audio astats peak | −1.481 dBFS | **ch1 −1.915 / ch2 −1.599 dBFS**, RMS −27.28 dB | zero clipping ✔ |
+| AAC ladder choice | −0.18 dB (pass 3) | **−0.12 dB (pass 2 of 6)** | closest to −1.45 ✔ |
+| Gap pre-encode WAV | EXACT ZERO | **EXACT ZERO (all 8 windows)** | digital silence ✔ |
+| Gap decoded / 1.5–19 kHz band | −240 dB reading | **−240 dB reading (all windows)** | ≤ −100 dB ✔ |
+| Mix duration | 60.633 s | **60.633 s** | ✔ |
+
+**`AUDIO_BUILD_OK`** — boundary gaps 6/6 OK, `speech_overlaps: []`, `gap_hf_ok: true`, `gap_silence_ok: true`, `aac_peak_in_target: true`, `decoded_zero_clipping: true`, `narration_bus_mode: "linear"`, `compressor_enabled: false`, `limiter_enabled: false`, `headroom_trim_db: -9.5`, `raw_peak_after_staging_dbfs: 7.5`. Full AAC ladder (deterministic): +0.00 → −1.96, **−0.12 → −1.60 ✔**, −0.18 → −2.16, −0.24 → −2.25, −0.30 → −1.02, −0.55 → −2.48 dBFS. Bus peak located at t = 43.556 s inside seg5 (a genuine speech transient, clear of the 20 ms micro-fade).
+
+## Identity proofs (nothing visual touched)
+
+- `ve2-audio-timeline.json` md5 **`46df7fe8…`** — byte-identical to Phase 4.1/4.2.
+- `prototype/timeline.js` md5 **`275e319a…`** — byte-identical.
+- Re-mux (`-c:v copy`): video stream MD5 **`b7f3cd30…`** unchanged; **1819 frames**, 1080×1920 @30 fps, **60.633333 s**.
+- MP4 audio PCM md5 changed (`33c359b9…` → `0191d377…`) and equals the new m4a decoded directly — the only change is the narration audio.
+- **determinism:** two independent builds → logs byte-identical, `narration_mix_phase4.m4a` byte-identical (md5 `555da9b9…`), verify JSON byte-identical (md5 `ab27e7f8…`).
+- **captionSweep** (`ve2-phase43-caption-sweep.json`): both MP4s decode 1819/1819 frames; all 6 sweep frames **MD5-identical old-vs-new** → captions and all burned-in visuals provably unchanged.
+
+## Phase 4.3 files
+
+- `download/ve2-phase4-25d-enzo-sfx.mp4` — re-muxed deliverable (raw gain-staged audio, video bit-exact)
+- `download/ve2-phase4-audio/narration_mix_phase4.m4a` — linear narration mix (md5 `555da9b9…`)
+- `download/ve2-phase4-audio-verify.json` — updated with `narration_bus_mode`, `compressor_enabled`, `limiter_enabled`, `headroom_trim_db`, `raw_peak_after_staging_dbfs`
+- `download/ve2-phase43-caption-sweep.json` — frame identity proof
+- `tools/ve2_build_audio_phase4.py` — Phase 4.3 change set (docstring documents rationale)
+
+## Honest notes
+
+- **The mix is now deliberately quieter** (speech mean −25.5 dB vs −16.8 dB in 4.2): without compression the raw 23.5 dB crest factor forces a −9.5 dB static headroom trim to keep peaks at −2.0 dBFS with zero clipping. Relative dynamics are untouched (one constant scale). This is a **diagnostic build**: if the "هششش" is confirmed gone, loudness can be restored transparently (e.g. peak-only soft-knee ceiling with oversampling, or a re-gained mix with peaks parked lower) without re-introducing inter-sentence gain-riding.
+- The full build ran ~10 min in this sandbox and both build invocations hit the shell timeout at the very END of the run (log complete, `AUDIO_BUILD_OK` printed, all artifacts flushed, artifacts md5-compared across runs). The `astats` probe on the muxed MP4 also returned exit −9 (SIGKILL) after printing all results. No data was affected; determinism is proven from the flushed artifacts.
+- `compress()` / `peak_limiter()` remain in the file (unused when the flags are False) so the 4.2 chain can be restored exactly.

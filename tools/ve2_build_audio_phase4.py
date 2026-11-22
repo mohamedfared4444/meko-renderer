@@ -1,6 +1,31 @@
 #!/usr/bin/env python3
 """VE2 Phase 4 — tightened narration pacing + deterministic factory SFX.
 
+PHASE 4.3 (raw gain-staged test, dynamics chain OFF — pumping fix):
+  Even with SFX (4.1) and the music pad (4.2) already digital silence,
+  the user STILL heard a "هششش" / TV-signal-cut / TV-off artifact
+  between narration lines. The only remaining suspect was the dynamics
+  chain on the narration bus: compress() ran FIVE cascaded passes
+  (threshold -19 dB, ratio 3.0, 200 ms release) and peak_limiter() took
+  ~9.5 dB of gain reduction at speech peaks (raw crest factor ~23.5 dB
+  after the +3.61 dB staging gain), its 3 ms-lookahead / 120 ms-release
+  gain riding back up through every inter-sentence gap and modulating
+  every decaying tail — the classic pump/breath that reads as "هششش".
+  COMPRESSOR_ENABLED = False and LIMITER_ENABLED = False now give the
+  narration bus ONE static linear staging gain (speech-mean target)
+  plus ONE static headroom trim that parks the TRUE peak at
+  HEADROOM_CEIL_DBFS (-2.0 dBFS) — the entire bus is a single constant
+  scale (x * k), so zero dynamic processing exists anywhere and no
+  pump/gain-ride can physically occur between sentences. The AAC ladder
+  then pins the decoded peak in [-1.90, -1.30] dBFS (zero clipping).
+  Deliberate, expected cost: the raw Enzo crest (~23.5 dB) means the
+  speech mean lands far below the old -16 dB loudness target (probe
+  measured -25.5 dB); relative dynamics are untouched and loudness can
+  be restored later with a transparent peak-only treatment once the
+  artifact is confirmed gone. Segment placements, word timings,
+  ve2-audio-timeline.json, timeline.js and the 2.5D frames are
+  untouched (md5-verified).
+
 PHASE 4.2 (music pad removal, user-reported "هششش / TV-switch" fix):
   After the Phase-4.1 SFX removal the user STILL heard a soft "هششش"
   / TV channel-switch / TV-off artifact between narration lines. With
@@ -109,6 +134,24 @@ MUSIC_ENABLED = False
 # applied on the MIX BUS ONLY (never on finals[...], so word timings,
 # placements and the timeline JSON stay byte-identical).
 MICRO_FADE_S = 0.020
+
+# PHASE 4.3: raw gain-staged test — the ENTIRE dynamics chain on the
+# narration bus is disabled. With SFX + music already digital silence,
+# the only remaining source of the user's "هششش / TV-switch" artifact
+# was compress()/peak_limiter() pumping: the limiter took ~9.5 dB of
+# gain reduction at speech peaks and its 120 ms release rode back up
+# through every inter-sentence gap, and compress() ran FIVE cascaded
+# passes with 200 ms releases. With these flags False the narration bus
+# gets ONE static linear staging gain (speech-mean target) plus ONE
+# static headroom trim (true peak parked at HEADROOM_CEIL_DBFS) — a
+# single constant scale, so no pump/breath/gasp can exist between
+# sentences. Flip both to True only to restore the (pumping) 4.2 chain.
+COMPRESSOR_ENABLED = False
+LIMITER_ENABLED = False
+
+# PHASE 4.3: static pre-AAC headroom ceiling (TRUE peak, dBFS) for the
+# linear narration bus. Applied as ONE constant scale — NOT a limiter.
+HEADROOM_CEIL_DBFS = -2.0
 
 
 def run(cmd, **kw):
@@ -407,7 +450,7 @@ def main():
     texts = {s["id"]: s["text"] for s in rep["segments"]}
     order = [s["id"] for s in rep["segments"]]
 
-    report = {"phase": 4, "sub_phase": "4.2", "windows": [],
+    report = {"phase": 4, "sub_phase": "4.3", "windows": [],
               "processing": [], "placements": [],
               "gaps": [], "verify": {}}
 
@@ -677,18 +720,51 @@ def main():
 
     gn0 = 10 ** (gain_n / 20)
     x = gn0 * nar_f
-    for _ in range(5):
-        x = compress(x, threshold_db=-19.0, ratio=3.0)
-        x = peak_limiter(x, ceiling=0.794)
-        r = math.sqrt(float(np.mean(x[sp_mask] ** 2)))
-        x = x * (10 ** ((-16.5 - 20 * math.log10(r + 1e-9)) / 20))
-    nar_lim = peak_limiter(x, ceiling=0.794)
+    if COMPRESSOR_ENABLED and LIMITER_ENABLED:
+        # legacy 4.2 dynamics chain (5x compress+limit+re-gain + final
+        # limiter) — kept for reference/history, off in phase 4.3.
+        for _ in range(5):
+            x = compress(x, threshold_db=-19.0, ratio=3.0)
+            x = peak_limiter(x, ceiling=0.794)
+            r = math.sqrt(float(np.mean(x[sp_mask] ** 2)))
+            x = x * (10 ** ((-16.5 - 20 * math.log10(r + 1e-9)) / 20))
+        nar_lim = peak_limiter(x, ceiling=0.794)
+        bus_mode = "limited"
+    else:
+        # PHASE 4.3: clean LINEAR gain staging. One static staging gain
+        # (speech-mean target above), then ONE static headroom trim that
+        # parks the TRUE peak at HEADROOM_CEIL_DBFS. Both are constants:
+        # the whole bus is a single x * k, so no gain reduction, no
+        # release tails, no pumping can exist anywhere — especially not
+        # between sentences. Zero clipping by construction (peak <=
+        # 10 ** (HEADROOM_CEIL_DBFS / 20)).
+        pk_lin = float(np.abs(x).max())
+        pk_lin_db = 20 * math.log10(pk_lin + 1e-12)
+        trim = 10 ** (HEADROOM_CEIL_DBFS / 20) / max(pk_lin, 1e-12)
+        x = x * trim
+        nar_lim = x
+        report["verify"]["headroom_trim_db"] = round(
+            20 * math.log10(trim + 1e-12), 2)
+        report["verify"]["raw_peak_after_staging_dbfs"] = round(
+            pk_lin_db, 2)
+        bus_mode = "linear"
     rms3 = math.sqrt(float(np.mean(nar_lim[sp_mask] ** 2)))
     pk_l = 20 * math.log10(float(np.abs(nar_lim).max()) + 1e-9)
     nar_mean_db = 20 * math.log10(rms3 + 1e-9)
-    print(f"[levels] limited speech mean={nar_mean_db:.2f}dB peak={pk_l:.2f}dBFS")
-    report["verify"]["narration_limited_speech_mean_db"] = round(nar_mean_db, 2)
+    print(f"[levels] {bus_mode} speech mean={nar_mean_db:.2f}dB "
+          f"peak={pk_l:.2f}dBFS")
+    report["verify"]["narration_limited_speech_mean_db"] = round(
+        nar_mean_db, 2)
     report["verify"]["narration_limited_peak_dbfs"] = round(pk_l, 2)
+    report["verify"]["narration_bus_mode"] = bus_mode
+    report["verify"]["compressor_enabled"] = bool(COMPRESSOR_ENABLED)
+    report["verify"]["limiter_enabled"] = bool(LIMITER_ENABLED)
+    report["verify"]["headroom_ceil_dbfs"] = HEADROOM_CEIL_DBFS
+    report["verify"]["narration_bus_note"] = (
+        "phase 4.3: raw gain-staged test per user report of a residual "
+        "\u0647\u0634\u0634\u0634 / TV-switch artifact between lines; "
+        "compress() + peak_limiter() disabled, bus = one static linear "
+        "gain + one static headroom trim (no dynamics => no pumping)")
     report["verify"]["music_enabled"] = bool(MUSIC_ENABLED)
     report["verify"]["music_gain_db"] = (round(gain_m, 2) if MUSIC_ENABLED
                                          else 0.0)
@@ -696,12 +772,25 @@ def main():
         "phase 4.2: ambient music pad muted per user report of a soft "
         "\u0647\u0634\u0634\u0634 / TV-switch artifact between "
         "narration lines; mix = pure narration, gaps = digital silence")
-    if not (-18.0 <= nar_mean_db <= -16.0):
-        print("!! narration speech mean out of spec [-18, -16]"); sys.exit(6)
+    # PHASE 4.3: with the dynamics chain OFF, the speech mean sits below
+    # the old [-18, -16] band by the raw crest factor (linear penalty,
+    # measured -25.5 dB in the staging probe). Linear mode therefore
+    # accepts the deliberately quiet mix with a sanity floor of -32 dB
+    # (guards against a broken/attenuated build); the legacy chain keeps
+    # the strict 4.2 band.
+    if COMPRESSOR_ENABLED and LIMITER_ENABLED:
+        mean_ok = -18.0 <= nar_mean_db <= -16.0
+        mean_spec = "[-18, -16]"
+    else:
+        mean_ok = -32.0 <= nar_mean_db <= -16.0
+        mean_spec = "[-32, -16] (linear crest penalty expected in 4.3)"
+    if not mean_ok:
+        print(f"!! narration speech mean out of spec {mean_spec}")
+        sys.exit(6)
 
-    # PHASE 4.2: muted buses contribute EXACTLY 0.0, so the mix is
-    # bit-identical to the limited narration bus and gap samples stay
-    # digital zero (0.0 * finite = 0.0 exactly in IEEE-754).
+    # PHASE 4.2/4.3: muted buses contribute EXACTLY 0.0, so the mix is
+    # bit-identical to the narration bus and gap samples stay digital
+    # zero (0.0 * finite = 0.0 exactly in IEEE-754).
     gm = 10 ** (gain_m / 20) if MUSIC_ENABLED else 0.0
     gs = 10 ** ((-32.0 - sfx_cur) / 20) if SFX_ENABLED else 0.0
     mixL = nar_lim + gm * tL + gs * sfx_n[:, 0]

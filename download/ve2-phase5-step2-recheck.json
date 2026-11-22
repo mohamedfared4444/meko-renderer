@@ -1,0 +1,48 @@
+{
+  "phase": 5,
+  "sub_phase": "step2-recheck",
+  "check": "independent re-verification of step 2 (f0bf4c8) in a fresh sandbox: chocolate zero-visual-regression + coffee non-paid readiness + mirror integrity",
+  "date_utc": "2026-11-23T00:00:00Z",
+  "base_commit": "f0bf4c83a23c0cd967d260006d8b9955340e7105",
+  "ab_reference_commit": "8c9c9210602ad84949f5421420cc40fb89e954c0",
+  "method_notes": "fresh container; repo fast-forwarded 75ae9d5 -> f0bf4c8; every claim of f0bf4c8 re-executed from the committed files, not trusted from the commit message",
+  "chocolate_zero_visual_regression": {
+    "ab_test": "OLD = git 8c9c921 engine-world.js + scene.html (hardcoded text, no product-data.js); NEW = committed f0bf4c8 spec-driven engine + committed chocolate product-data.js; both staged as isolated scene dirs, rendered with the same Playwright renderer (VE2_SCENE_URL override)",
+    "stills_t": [1.0, 16.0, 20.0, 27.0, 38.0, 46.0, 50.0, 55.0, 57.5, 59.0],
+    "result": "10/10 PNGs byte-identical (md5 cmp, 0 differ)",
+    "verify": "PASS — render_frames.py --verify against committed scene dir (banners visible with spec labels, chips gap OK, mold overlap OK, inlet clean OK)",
+    "fail_fast": "engine with scene.html but product-data.js removed -> pageerror 've2: window.VE2_PRODUCT missing/incomplete', __ve2Ready never set (proven in this recheck)"
+  },
+  "frozen_hashes": {
+    "download/ve2-audio-timeline.json": "46df7fe817e08aa30a093b113acfa9e1",
+    "download/ve2-phase4-audio/narration_mix_phase4.m4a": "785989aaf9982571039764d183a2606c",
+    "download/ve2-phase4-audio-verify.json": "994bd9c433c74e8393527960f68da9ef",
+    "prototype/timeline.js": "275e319aa254052287528f995d7a0e74",
+    "check_chocolate": "PASS (11/11 named checks)",
+    "video": "1080x1920 @ 30fps, 1819 frames, 60.633s — untouched"
+  },
+  "validator": {
+    "validate_chocolate": "PASS",
+    "validate_coffee": "PASS (7 scenes / 7 segments / 58.0s @ 30fps, ar-EG)",
+    "validate_soap": "PASS (7 scenes / 7 segments / 62.0s @ 30fps, ar-EG)",
+    "negative_tests": {
+      "latin_layer_banner_label": "REJECTED (Arabic-script guard)",
+      "duplicate_world_banner_keys": "REJECTED",
+      "latin_end_card_line": "REJECTED (Arabic-script guard)",
+      "unknown_machine_key": "accepted by validator (by design) — engine fail-fast guard proven (known-keys error path in buildBanners)",
+      "missing_end_card": "REJECTED by render-data (blocks required for renderer)"
+    }
+  },
+  "coffee_non_paid": {
+    "policy": "PASS — lead 1.4, g12 0.8, anchor seg5 33.9, cuts 13.5/22.8/33.4/41.2/51.0/54.2, 1740 frames @ 58.0s",
+    "skeleton": "PASS — 1740 frames / 58.0s / 1080x1920 @ 30fps, 7 scenes, cuts match spec",
+    "render_data": "PASS — product=coffee, chips=4, layer_banners=5, end_card 4 lines, title/pill ar-EG (generated to isolated preview path)",
+    "paid_tts_called": false
+  },
+  "mirror_integrity": {
+    "repo_prototype_vs_prototype-sources/phase1-v2": "byte-identical (10 files cmp)",
+    "sandbox_download/ve2-engine-source": "re-synced in this recheck: ve2_product_spec.py + schemas/ve2-product-spec.schema.json were stale (Step-1 versions) — now byte-identical to tools/; all 10 prototype files + products/ + schemas/ verified",
+    "note": "prototype-sources/phase1-v2/ and download/ve2-engine-source/ carry the scene-set only (no tools/) — tools live in tools/ and the sandbox mirror"
+  },
+  "result": "PASS"
+}

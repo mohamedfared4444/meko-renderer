@@ -1,6 +1,28 @@
 #!/usr/bin/env python3
 """VE2 Phase 4 — tightened narration pacing + deterministic factory SFX.
 
+PHASE 4.4 (boundary artifact strip — measured ROOT CAUSE fix):
+  Boundary forensics on seg1..seg7_Enzo.flac proved the inter-sentence
+  "هششش" / TV-cut sound is not a mix artifact at all: the Gemini TTS
+  endpoint returns a complete RIFF/WAVE file (44-byte header + s16le
+  PCM data chunk + ~7.7 KB C2PA content-credentials trailer) and the
+  old generator decoded the WHOLE buffer as raw s16le PCM, so the
+  header became a ~5 ms head blip (-13 dBFS) and the trailer became a
+  160-305 ms digital-garbage block (-2.0 dBFS peak) at the end of
+  EVERY segment (byte proof: identical last samples +0.8234/0.0/+0.8234
+  in all 7 files, tail cross-correlation up to r=+0.92, tail decodes
+  to "Root CA G3" / "Google" / cv.iptc.org ... trainedAlgorithmicMedia).
+  The -45 dB edge trimmer cannot see it (-2 dB reads as speech), so the
+  blob survived every phase and cut abruptly into the silent gaps.
+  Phase 4.4 strips the boundary artifact blocks structurally (loud-or-
+  exact-zero frames scanning from each file edge, hard length cap,
+  fail-safe revert), restores each segment's frozen Phase-4.3 sample
+  count with its own tiled room tone (so placements, word timings,
+  ve2-audio-timeline.json, timeline.js and the 2.5D frames stay
+  byte-identical), and fades the final 10 ms to exact zero. The 4.3
+  linear bus (no compressor, no limiter), SFX/music muting, and the
+  AAC ladder are unchanged.
+
 PHASE 4.3 (raw gain-staged test, dynamics chain OFF — pumping fix):
   Even with SFX (4.1) and the music pad (4.2) already digital silence,
   the user STILL heard a "هششش" / TV-signal-cut / TV-off artifact
@@ -153,6 +175,14 @@ LIMITER_ENABLED = False
 # linear narration bus. Applied as ONE constant scale — NOT a limiter.
 HEADROOM_CEIL_DBFS = -2.0
 
+# PHASE 4.4: Gemini TTS boundary cleanup constants. The WAV-container
+# bytes (RIFF header at the head, C2PA trailer at the tail) were decoded
+# as audio samples by the old generator: measured head blip ~5 ms at
+# -13 dBFS, tail blob 160-305 ms peaking at -2.0 dBFS on ALL 7 segments.
+TAIL_BLOB_MAX_S = 0.40     # hard safety cap (measured blobs: 160-305 ms)
+HEAD_BLOB_MAX_S = 0.030    # header blip ~5 ms; real speech starts >= 215 ms in
+TAIL_FADE_S = 0.010        # raised-cosine fade to exact zero at segment end
+
 
 def run(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
@@ -259,6 +289,119 @@ def trim_edges(a, pad=0.08):
     i0 = max(0, int((t0 - pad) * SR))
     i1 = min(len(a), int((t1 + pad) * SR))
     return a[i0:i1].copy(), t0, len(a) / SR - t1
+
+
+def frame_peaks(a, win=240):
+    """PHASE 4.4: per-5ms-frame peak (linear) + exact-zero flag. O(n)."""
+    n_f = len(a) // win
+    if n_f == 0:
+        return np.array([]), np.array([], dtype=bool)
+    x = np.abs(a[:n_f * win].astype(np.float64).reshape(n_f, win))
+    return x.max(axis=1), x.sum(axis=1) == 0.0
+
+
+def strip_edge_blob(a, from_end=True, max_s=TAIL_BLOB_MAX_S, label=""):
+    """PHASE 4.4: cut a boundary artifact block (Gemini WAV-container
+    bytes that the old generator wrote into the audio as samples).
+
+    Detection is STRUCTURAL, not a level guess: scanning from the file
+    edge, the artifact region consists exactly of frames that are either
+    LOUD (frame peak > noise-floor + 20 dB — ASCII/binary metadata
+    renders at -2..-13 dBFS) or EXACT DIGITAL ZERO (0x00-heavy chunk
+    padding), and it always ends at real room tone (non-zero, quiet).
+    Hard length cap plus a post-cut safety check (the kept edge must be
+    quiet room tone, never speech) so a clean file can never be
+    damaged: when detection is unsure, NOTHING is stripped (fail-safe
+    to the exact 4.3 behavior)."""
+    pk, zero = frame_peaks(a)
+    n_f = len(pk)
+    info = {"stripped_s": 0.0, "blob_peak_dbfs": None, "floor_db": None}
+    if n_f < 8:
+        return a, info
+    nz = pk[(~zero) & (pk > 1e-6)]
+    floor_db = (20 * math.log10(float(np.percentile(nz, 10)) + 1e-12)
+                if len(nz) else -120.0)
+    info["floor_db"] = round(floor_db, 1)
+    loud_th = 10 ** ((floor_db + 20.0) / 20)
+    is_art = zero | (pk > loud_th)
+    cap = int(max_s * SR)
+    if from_end:
+        k = n_f - 1
+        while k >= 0 and is_art[k]:
+            k -= 1
+        cut = max((k + 1) * 240, len(a) - cap)
+        if cut >= len(a) - 240:
+            return a, info                 # nothing meaningful at the edge
+        blob_pk_db = 20 * math.log10(
+            float(pk[int(cut / 240):].max()) + 1e-12)
+        kept = a[:cut]
+        tail_rms = math.sqrt(float(np.mean(
+            kept[-4800:].astype(np.float64) ** 2))) if len(kept) >= 4800 \
+            else 0.0
+        if tail_rms > loud_th:             # cut into speech -> revert
+            print(f"[blob] {label}: safety check failed (kept edge loud)"
+                  " -> nothing stripped")
+            return a, info
+        info["stripped_s"] = round((len(a) - cut) / SR, 3)
+        info["blob_peak_dbfs"] = round(blob_pk_db, 1)
+        print(f"[blob] {label}: stripped {info['stripped_s']:.3f}s "
+              f"(peak {blob_pk_db:.1f} dBFS, floor {floor_db:.1f} dB)")
+        return kept, info
+    k = 0
+    while k < n_f and is_art[k]:
+        k += 1
+    cut = min(k * 240, cap)
+    if cut < 240:
+        return a, info
+    kept = a[cut:]
+    head_rms = math.sqrt(float(np.mean(
+        kept[:4800].astype(np.float64) ** 2))) if len(kept) >= 4800 else 0.0
+    if head_rms > loud_th:                 # cut into speech -> revert
+        print(f"[blob] {label}: safety check failed (kept edge loud)"
+              " -> nothing stripped")
+        return a, info
+    info["stripped_s"] = round(cut / SR, 3)
+    print(f"[blob] {label}: stripped {info['stripped_s']:.3f}s (head)")
+    return kept, info
+
+
+def pad_room_tone(a, target):
+    """PHASE 4.4: extend the segment with tiled copies of its own
+    trailing room tone (the last <=80 ms kept by trim_edges) so the
+    frozen Phase-4.3 sample count is restored after the blob strip.
+    (The blob occupied part of that span, so the missing samples are
+    replaced by the segment's real room tone; a 5 ms raised-cosine
+    fade-in per tile kills loop seams. Fully deterministic.)"""
+    need = target - len(a)
+    if need <= 0:
+        return a
+    src_len = min(len(a), int(0.08 * SR))
+    src = a[-src_len:]
+    tiles = []
+    pos = 0
+    while pos < need:
+        n_ = min(src_len, need - pos)
+        tile = src[:n_].astype(np.float32).copy()
+        if pos > 0:
+            m = min(int(0.005 * SR), n_)
+            tile[:m] *= (0.5 * (1.0 - np.cos(np.pi * np.arange(m) / m))
+                         ).astype(np.float32)
+        tiles.append(tile)
+        pos += n_
+    return np.concatenate([a, np.concatenate(tiles)])[:target]
+
+
+def apply_end_fade(a, dur_s=TAIL_FADE_S):
+    """PHASE 4.4: raised-cosine fade of the final dur_s to EXACT zero so
+    no burst can sit at a segment boundary even before the mix-bus
+    micro-fade (the strip already leaves only room tone there)."""
+    n = min(len(a), int(dur_s * SR))
+    if n <= 0:
+        return a
+    r = (0.5 * (1.0 + np.cos(np.pi * np.arange(n) / n))).astype(np.float32)
+    a = a.copy()
+    a[-n:] *= r
+    return a
 
 
 def atempo_file(src, dst, factor):
@@ -450,29 +593,71 @@ def main():
     texts = {s["id"]: s["text"] for s in rep["segments"]}
     order = [s["id"] for s in rep["segments"]]
 
-    report = {"phase": 4, "sub_phase": "4.3", "windows": [],
+    report = {"phase": 4, "sub_phase": "4.4", "windows": [],
               "processing": [], "placements": [],
               "gaps": [], "verify": {}}
 
     # ---------- 1) load + per-segment processing ----------
+    # PHASE 4.4: boundary artifact strip BEFORE trimming; then each
+    # segment's sample count is LOCKED to the exact Phase-4.3 count
+    # (room-tone pad) so placements/gaps/word timings stay identical.
     finals = {}
+    lock_samples = {}
+    word_src = {}
     for sid in order:
         a = load_flac_mono(os.path.join(SRC, f"{sid}_Enzo.flac"))
         raw_dur = len(a) / SR
         note = {"id": sid, "raw_dur": round(raw_dur, 3)}
+        # 4.4 reference chain: the untouched 4.3 processing of the same
+        # file defines (a) the frozen placement duration and (b) the
+        # word-timing source, so ve2-audio-timeline.json stays
+        # byte-identical to 4.1/4.2/4.3 (last-word caption ends keep
+        # their frozen times by explicit task requirement).
+        a43 = load_flac_mono(os.path.join(SRC, f"{sid}_Enzo.flac"))
+        a43, _, _ = trim_edges(a43, pad=0.08)
+        keep = PAUSE_KEEP[sid]
+        if keep is not None:
+            a43, _ = tighten_pauses(a43, keep)
+        lock_samples[sid] = len(a43)
+        word_src[sid] = a43
+        # 4.4 clean chain: strip boundary blobs, then trim/tighten.
+        a, head_i = strip_edge_blob(a, from_end=False,
+                                    max_s=HEAD_BLOB_MAX_S,
+                                    label=f"{sid} head")
+        a, tail_i = strip_edge_blob(a, from_end=True,
+                                    max_s=TAIL_BLOB_MAX_S,
+                                    label=f"{sid} tail")
+        note["head_strip_s"] = round(head_i["stripped_s"], 3)
+        note["tail_strip_s"] = round(tail_i["stripped_s"], 3)
+        note["tail_blob_peak_dbfs"] = tail_i["blob_peak_dbfs"]
+        note["noise_floor_db"] = tail_i["floor_db"]
         a, lead_s, trail_s = trim_edges(a, pad=0.08)
         note["edge_trim"] = [round(lead_s, 3), round(trail_s, 3)]
-        keep = PAUSE_KEEP[sid]
         if keep is not None:
             a, removed = tighten_pauses(a, keep)
             note["pause_keep"] = keep
             note["pause_removed"] = round(removed, 3)
+        clean_dur = len(a)
+        if clean_dur < lock_samples[sid]:
+            a = pad_room_tone(a, lock_samples[sid])
+            note["roomtone_pad_s"] = round(
+                (lock_samples[sid] - clean_dur) / SR, 3)
+        elif clean_dur > lock_samples[sid]:
+            print(f"!! {sid}: clean dur {clean_dur} > lock "
+                  f"{lock_samples[sid]} (unexpected) -> truncated")
+            a = a[:lock_samples[sid]]
+        a = apply_end_fade(a, TAIL_FADE_S)
+        note["end_fade_s"] = TAIL_FADE_S
+        note["locked_dur_s"] = round(lock_samples[sid] / SR, 3)
+        assert len(a) == lock_samples[sid], f"{sid}: duration lock mismatch"
         dur = len(a) / SR
         note["processed_dur"] = round(dur, 3)
         finals[sid] = a
         report["processing"].append(note)
-        print(f"[load] {sid}: raw={raw_dur:.3f} -> processed={dur:.3f} "
-              f"(keep={keep})")
+        print(f"[load] {sid}: raw={raw_dur:.3f} "
+              f"stripped(t={note['tail_strip_s']:.3f},"
+              f"h={note['head_strip_s']:.3f}) -> processed={dur:.3f} "
+              f"(locked to 4.3, keep={keep})")
 
     d = {sid: len(finals[sid]) / SR for sid in order}
     d1, d2, d3, d4, d5, d6, d7 = (d["seg1"], d["seg2"], d["seg3"], d["seg4"],
@@ -577,7 +762,13 @@ def main():
         text = texts[sid]
         toks = text.replace("،", " ،").split()
         toks = [t for t in toks if t != "،"] or [text]
-        a = finals[sid]
+        # PHASE 4.4: word timings computed on the frozen 4.3-processed
+        # signal (word_src), NOT on the blob-stripped finals — the last
+        # word's caption end keeps its frozen time and the timeline
+        # JSON stays byte-identical to 4.1/4.2/4.3 (explicit task
+        # requirement; captions merely linger over the now-clean
+        # room-tone tail exactly as they always did).
+        a = word_src[sid]
         wt = word_timings(a, [(t, 0) for t in toks])
         if wt is None:
             print("no speech bursts for", sid); sys.exit(3)
@@ -765,6 +956,19 @@ def main():
         "\u0647\u0634\u0634\u0634 / TV-switch artifact between lines; "
         "compress() + peak_limiter() disabled, bus = one static linear "
         "gain + one static headroom trim (no dynamics => no pumping)")
+    report["verify"]["tail_cleanup_mode"] = (
+        "boundary blob strip + room-tone duration lock + 10 ms end fade")
+    report["verify"]["tail_cleanup_note"] = (
+        "phase 4.4 ROOT CAUSE: Gemini TTS returns a RIFF/WAVE container "
+        "with a C2PA trailer; the old generator decoded it as raw PCM, "
+        "leaving a 160-305 ms -2 dBFS garbage block at every segment end "
+        "(the measured inter-sentence \u0647\u0634\u0634 / TV-cut source). "
+        "Blob stripped per segment, durations locked to the exact 4.3 "
+        "sample counts, mix chain unchanged (linear staging + static "
+        "headroom trim)")
+    report["verify"]["tail_blob_total_s"] = round(
+        sum(p_["tail_strip_s"] + p_["head_strip_s"]
+            for p_ in report["processing"]), 3)
     report["verify"]["music_enabled"] = bool(MUSIC_ENABLED)
     report["verify"]["music_gain_db"] = (round(gain_m, 2) if MUSIC_ENABLED
                                          else 0.0)
@@ -823,7 +1027,14 @@ def main():
     # file; the winner is BYTE-COPIED to narration_mix_phase4.m4a (no
     # re-encode step -> faster and guaranteed identical to the measured
     # candidate).
-    ladder = [0.0, -0.12, -0.18, -0.24, -0.30, -0.55]
+    # PHASE 4.4: with the boundary blob stripped, the raw peak after
+    # staging drops (+7.50 -> +4.06 dBFS in the first 4.4 run), the
+    # headroom trim eases (-9.5 -> -6.06 dB) and AAC overshoot nearly
+    # vanishes (0.0 dB scale decoded at -2.01 dBFS: the square-ish C2PA
+    # bytes drove the old overshoot). The search grid is extended
+    # upward so the ladder can still pin the decoded peak inside
+    # [-1.90, -1.30] dBFS; selection logic unchanged.
+    ladder = [0.60, 0.48, 0.36, 0.24, 0.12, 0.0, -0.12, -0.18]
     ladder_res = []
     best_safe = None      # (dist, scale, peak, path) with peak <= -1.30 dBFS
     best_fb = None        # (dist, scale, peak, path) peak in (-1.30, -1.00]
@@ -1058,6 +1269,29 @@ def main():
         if runs_all[i + 1][0] < runs_all[i][1] - 1e-4:
             overlaps.append(runs_all[i])
     checks["speech_overlaps"] = overlaps
+
+    # PHASE 4.4 — no-burst-at-boundary proof: the last 50 ms of every
+    # placed segment must sit at room-tone/fade-out level on the placed
+    # narration bus, far below the old C2PA blob (-2 dBFS peak, -8 dB
+    # RMS). This is the direct regression guard for the TV-cut fix.
+    tail_energy = []
+    tail_ok = True
+    for sid in order:
+        i0 = int(s[sid] * SR)
+        i1 = min(i0 + len(finals[sid]), n_total)
+        seg_end = nar_f[max(0, i1 - int(0.05 * SR)):i1]
+        r_db = (20 * math.log10(
+            math.sqrt(float(np.mean(seg_end ** 2))) + 1e-9)
+            if len(seg_end) else -120.0)
+        ok = r_db <= -30.0
+        tail_ok = tail_ok and ok
+        tail_energy.append({"id": sid,
+                            "last_50ms_rms_db": round(r_db, 1),
+                            "ok": bool(ok)})
+        print(f"[tail] {sid}: last-50ms placed RMS {r_db:.1f} dB "
+              + ("OK" if ok else "FAIL"))
+    checks["tail_energy_check"] = tail_energy
+    checks["tail_energy_ok"] = bool(tail_ok)
     report["verify"].update(checks)
 
     for p, name in ((DL, "ve2-phase4-audio-verify.json"),
@@ -1067,6 +1301,7 @@ def main():
     ok_all = (all(g_["ok"] for g_ in gaps) and not overlaps
               and checks.get("gap_hf_ok", False)
               and checks.get("gap_silence_ok", False)
+              and checks.get("tail_energy_ok", False)
               and checks.get("decoded_zero_clipping", False)
               and bool(report["verify"].get("aac_peak_in_target", False))
               and bool(report["verify"].get("aac_zero_clipping", False)))

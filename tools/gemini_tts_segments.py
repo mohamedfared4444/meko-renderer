@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """Generate the 7 official narration segments with Enzo voice (FINAL narrator).
 
+PHASE 4.4 (clean container decode — root-cause companion fix):
+  The TTS endpoint returns a COMPLETE RIFF/WAVE file (44-byte header +
+  s16le PCM data chunk + ~7.7 KB C2PA content-credentials trailer).
+  Writing those bytes to a .pcm file and decoding with -f s16le turned
+  the header into a ~5 ms head blip and the trailer into a 160-305 ms
+  -2 dBFS garbage block at the end of EVERY segment (the measured
+  inter-sentence "هششش / TV-cut" source). trim_and_save now detects
+  the container (RIFF/WAVE or MP3 sync) and lets ffmpeg demux it
+  properly so ONLY real audio samples are written; the raw-s16le path
+  is kept as a fallback for responses without container magic. An
+  offline `--selftest` proves the fix on a synthetic WAV+trailer
+  without any network call or API key.
+
 Model: gemini-3.8-flash-tts (the only model that supports voiceName "Enzo"
 — verified in the top-5 evaluation run 44390634477).
 Voice: Enzo. Director's note: the winning documentary-creator directive.
@@ -144,8 +157,50 @@ def tts_call(key, text):
     return None
 
 
+def decode_container(raw: bytes, rate: int) -> bytes:
+    """PHASE 4.4: demux the TTS response properly before treating it as
+    PCM. The endpoint returns a RIFF/WAVE container whose non-audio
+    bytes (header + C2PA trailer) become audible garbage when decoded
+    as raw s16le. Container responses are decoded via ffmpeg's demuxer
+    (non-audio chunks are dropped); only responses without container
+    magic fall back to the legacy raw-s16le interpretation. Offline:
+    no network, no TTS call, no key."""
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WAVE":
+        suffix = ".wav"
+        in_fmt = []
+    elif raw[:3] == b"ID3" or raw[:2] in (b"\xff\xfb", b"\xff\xf3"):
+        suffix = ".mp3"
+        in_fmt = []
+    else:
+        suffix = ".pcm"          # legacy: genuinely raw s16le
+        in_fmt = ["-f", "s16le", "-ar", str(rate), "-ac", "1"]
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+        f.write(raw)
+        tmp = f.name
+    out = tmp + ".s16"
+    try:
+        r = subprocess.run(
+            ["ffmpeg", "-y", "-v", "error"] + in_fmt +
+            ["-i", tmp, "-map", "0:a:0",
+             "-ac", "1", "-ar", str(rate), "-f", "s16le", out],
+            capture_output=True, text=True)
+        if r.returncode != 0 or not os.path.exists(out):
+            print("[decode]", r.stderr[:240])
+            return raw           # fail-safe: never worse than before
+        return open(out, "rb").read()
+    finally:
+        for p in (tmp, out):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+
+
 def trim_and_save(pcm: bytes, rate: int, out_flac: str):
-    """s16le PCM -> silence-trimmed FLAC. Returns (raw_dur, trim_dur)."""
+    """s16le PCM -> silence-trimmed FLAC. Returns (raw_dur, trim_dur).
+    PHASE 4.4: pcm is first demuxed through decode_container so
+    container header/trailer bytes can never reach the FLAC."""
+    pcm = decode_container(pcm, rate)
     with tempfile.NamedTemporaryFile(suffix=".pcm", delete=False) as f:
         f.write(pcm)
         tmp = f.name
@@ -161,14 +216,11 @@ def trim_and_save(pcm: bytes, rate: int, out_flac: str):
         if r.returncode != 0 or not os.path.exists(out_flac):
             print("[ffmpeg]", r.stderr[:240])
             return None, None
-        p1 = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "csv=p=0", tmp], capture_output=True, text=True)
+        raw = len(pcm) / (rate * 2)      # decoded audio duration (exact)
         p2 = subprocess.run(
             ["ffprobe", "-v", "error", "-show_entries", "format=duration",
              "-of", "csv=p=0", out_flac], capture_output=True, text=True)
         try:
-            raw = float(p1.stdout.strip())
             trimmed = float(p2.stdout.strip())
         except ValueError:
             return None, None
@@ -187,7 +239,57 @@ def load_existing_report():
     return None
 
 
+def selftest() -> int:
+    """Offline proof of the PHASE 4.4 decode fix (no network, no key):
+    synthesize a RIFF/WAVE file (44-byte header + 0.5 s 440 Hz s16le
+    PCM + a fake 7716-byte C2PA-like trailer) and assert that
+    decode_container() returns EXACTLY the data-chunk samples — the
+    old raw-s16le path would have returned header+trailer as audio
+    (measured in production as the -2 dBFS tail blob). Also asserts
+    the legacy raw path is unchanged and trim_and_save end-to-end
+    writes a FLAC of the right duration."""
+    import math
+    import struct
+    rate = 24000
+    n = rate // 2                       # 0.5 s of 440 Hz sine
+    data = b"".join(
+        struct.pack("<h", int(12000 * math.sin(
+            2 * math.pi * 440 * k / rate))) for k in range(n))
+    hdr = (b"RIFF" + struct.pack("<I", 36 + len(data)) + b"WAVE" +
+           b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, rate,
+                                 rate * 2, 2, 16) +
+           b"data" + struct.pack("<I", len(data)))
+    wav = hdr + data + b"JUMBF" + b"A" * 7712   # fake C2PA trailer
+    got = decode_container(wav, rate)
+    ok = (len(got) == len(data) and got == data)
+    print(f"[selftest] wav+trailer ({len(wav)}B) -> decoded "
+          f"{len(got)}B (data chunk {len(data)}B): "
+          + ("OK" if ok else "FAIL"))
+    got_raw = decode_container(data, rate)
+    ok2 = got_raw == data
+    print(f"[selftest] raw s16le passthrough: "
+          + ("OK" if ok2 else "FAIL"))
+    tmp_flac = os.path.join(tempfile.gettempdir(), "ve2_selftest.flac")
+    raw, trimmed = trim_and_save(wav, rate, tmp_flac)
+    ok3 = (raw is not None and trimmed is not None
+           and abs(trimmed - 0.5) <= 0.05 and raw < len(wav) / (rate * 2))
+    print(f"[selftest] trim_and_save: raw={raw:.3f}s trimmed={trimmed:.3f}s "
+          f"(expect ~0.500s, trailer excluded): "
+          + ("OK" if ok3 else "FAIL"))
+    try:
+        os.unlink(tmp_flac)
+    except OSError:
+        pass
+    if ok and ok2 and ok3:
+        print("SELFTEST_OK")
+        return 0
+    print("SELFTEST_FAIL")
+    return 5
+
+
 def main() -> int:
+    if "--selftest" in sys.argv:
+        return selftest()
     key = key_from_env()
     if key:
         print("[key] source: GEMINI_API_KEY env var (in-memory)")

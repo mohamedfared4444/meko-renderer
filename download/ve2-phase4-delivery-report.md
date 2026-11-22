@@ -268,3 +268,87 @@ Reproducing the 4.2 staging gain (+3.61 dB → speech mean −16.0 dB) on the ra
 - **The mix is now deliberately quieter** (speech mean −25.5 dB vs −16.8 dB in 4.2): without compression the raw 23.5 dB crest factor forces a −9.5 dB static headroom trim to keep peaks at −2.0 dBFS with zero clipping. Relative dynamics are untouched (one constant scale). This is a **diagnostic build**: if the "هششش" is confirmed gone, loudness can be restored transparently (e.g. peak-only soft-knee ceiling with oversampling, or a re-gained mix with peaks parked lower) without re-introducing inter-sentence gain-riding.
 - The full build ran ~10 min in this sandbox and both build invocations hit the shell timeout at the very END of the run (log complete, `AUDIO_BUILD_OK` printed, all artifacts flushed, artifacts md5-compared across runs). The `astats` probe on the muxed MP4 also returned exit −9 (SIGKILL) after printing all results. No data was affected; determinism is proven from the flushed artifacts.
 - `compress()` / `peak_limiter()` remain in the file (unused when the flags are False) so the 4.2 chain can be restored exactly.
+
+---
+
+# PHASE 4.4 — Boundary artifact strip (ROOT CAUSE fix) — 2026-11-22
+
+## User report
+
+The "هششش / TV-cut" artifact **still** existed after 4.1 (SFX off), 4.2 (music off) and 4.3 (dynamics off). A tail-energy & boundary diagnostic was ordered on `seg1..seg7_Enzo.flac`.
+
+## Diagnostic verdict (measured, byte-level)
+
+The inter-sentence noise is **not a mix artifact** — it ships inside every narration file:
+
+- The Gemini TTS endpoint returns a **complete RIFF/WAVE file**: 44-byte header + s16le PCM data chunk + **~7.7 KB C2PA content-credentials trailer**.
+- The old generator (`tools/gemini_tts_segments.py`) wrote the whole buffer to a `.pcm` file and decoded it with `-f s16le`, so the header became a **~5 ms head blip (−13 dBFS)** and the trailer became a **160–305 ms digital-garbage block (−2.0 dBFS peak)** at the end of EVERY segment.
+- Byte proofs: identical last samples `+0.8234 / 0.0 / +0.8234` and identical first samples in all 7 files; tail cross-correlation up to **r = +0.92** (tail vs own body ≈ 0.00); tail bytes decode to `RIFF…WAVE fmt / data` (head) and `Google` / `Root CA G3` / `cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia` (C2PA/IPTC "trainedAlgorithmicMedia" provenance manifest).
+- `segments_report.json` corroborates: API PCM (`raw_dur`) is exactly **0.161 s shorter** than the saved FLAC (`dur`) on seg1–3 — the header + trailer bytes.
+- The −45 dB edge trimmer cannot see the blob (−2 dB reads as speech → last speech run = blob → kept to EOF). It then cut abruptly into the verified digital-silence gaps → the "TV switch-off" click-hiss at every sentence end. Present in every build since generation.
+
+## Change set
+
+1. **`tools/ve2_build_audio_phase4.py`** (phase 4.4):
+   - `strip_edge_blob()` — structural boundary cleanup per segment: scan from each file edge over frames that are loud (> noise-floor + 20 dB) or exact digital zero; stop at real room tone; hard caps `TAIL_BLOB_MAX_S = 0.40` / `HEAD_BLOB_MAX_S = 0.030`; post-cut safety check reverts the strip unless the kept edge is quiet room tone (a clean file can never be damaged).
+   - `pad_room_tone()` — each segment's sample count is **locked to its exact Phase-4.3 count** by tiling its own trailing room tone (5 ms raised-cosine seam fades); placements therefore cannot move.
+   - `apply_end_fade()` — final 10 ms raised-cosine fade to exact zero at every segment end (no burst can sit at a boundary even before the mix micro-fade).
+   - Word timings are computed on the **frozen 4.3-processed signal** (`word_src`), so `ve2-audio-timeline.json` stays byte-identical.
+   - AAC ladder grid extended upward (`+0.60…−0.18`): with the blob gone the raw peak after staging dropped **+7.50 → +4.06 dBFS**, the headroom trim eased **−9.5 → −6.06 dB**, and the AAC overshoot nearly vanished (the square-ish C2PA bytes drove it). Selection logic unchanged.
+   - `SFX_ENABLED / MUSIC_ENABLED / COMPRESSOR_ENABLED / LIMITER_ENABLED` all still **False** — linear bus untouched.
+   - New verify gates: per-segment `head/tail_strip_s`, `tail_blob_peak_dbfs`, `noise_floor_db`, `roomtone_pad_s`, `locked_dur_s` + `tail_energy_check` (last 50 ms of every placed segment must be ≤ −30 dB RMS).
+2. **`tools/gemini_tts_segments.py`**: `decode_container()` now detects RIFF/WAVE (or MP3 sync) and lets ffmpeg demux the response so only real audio samples reach the FLAC; raw-s16le kept as fallback; raw duration measured exactly in Python; offline `--selftest` (synthetic WAV + fake C2PA trailer → returns exactly the data chunk; **SELFTEST_OK**, no network, no key, no TTS call).
+
+## Tail-trim measurements per segment (48 kHz build chain)
+
+| Seg | tail blob stripped | blob peak | head stripped | noise floor | room-tone pad | locked dur (4.3) |
+|---|---|---|---|---|---|---|
+| seg1 | **0.216 s** | +3.9 dBFS | 0.005 s | −58.5 dB | 0.636 s | 3.666 s ✔ |
+| seg2 | **0.231 s** | +3.9 dBFS | 0.005 s | −62.6 dB | 0.576 s | 6.146 s ✔ |
+| seg3 | **0.306 s** | +3.4 dBFS | 0.005 s | −65.7 dB | 0.601 s | 8.646 s ✔ |
+| seg4 | **0.236 s** | +3.9 dBFS | 0.005 s | −63.9 dB | 0.771 s | 7.951 s ✔ |
+| seg5 | **0.161 s** | +2.9 dBFS | 0.005 s | −63.1 dB | 0.286 s | 6.551 s ✔ |
+| seg6 | **0.281 s** | +3.0 dBFS | 0.005 s | −64.1 dB | 0.596 s | 6.466 s ✔ |
+| seg7 | **0.181 s** | +3.9 dBFS | 0.005 s | −66.8 dB | 0.381 s | 5.386 s ✔ |
+| **Σ** | **1.612 s** | — | 0.035 s | — | — | all 7 locked ✔ |
+
+Last-50 ms placed RMS at every boundary (was −8 dB blob RMS in 4.3): seg1 −71.7, seg2 −45.4, seg3 −57.2, seg4 −71.5, seg5 −59.2, seg6 −63.1, seg7 −61.5 dB — all ≤ −30 ✔. (seg2's −45.4 is its own real trailing breath/room tone, faded to zero over 20+10 ms — 37 dB below the old blob.)
+
+## Measurements (4.4 mix vs 4.3)
+
+| Metric | Phase 4.3 (blob present) | **Phase 4.4 (blob stripped)** |
+|---|---|---|
+| Raw peak after staging gain | +7.50 dBFS (blob was the peak) | **+4.06 dBFS** |
+| Static headroom trim | −9.5 dB | **−6.06 dB** |
+| Speech mean (linear bus) | −25.50 dB | **−22.06 dB** (spec [−32, −16] ✔) |
+| Pre-encode mix peak | −2.00 dBFS | **−2.00 dBFS** (static trim) |
+| AAC decoded peak (true) | −1.60 dBFS (scale −0.12) | **−1.41 dBFS (scale +0.60, pass 1 of 8)** ✔ |
+| Boundary tail energy (last 50 ms) | blob −8 dB RMS → hard cut | **≤ −45 dB real room tone + fades** |
+| Gap pre-encode WAV | EXACT ZERO (all 8 windows) | **EXACT ZERO (all 8 windows)** ✔ |
+| Gap decoded 1.5–19 kHz | −240 dB reading | **−240 dB reading** ✔ |
+
+**`AUDIO_BUILD_OK`** — boundary gaps 6/6 OK, `speech_overlaps: []`, `gap_silence_ok`, `gap_hf_ok`, `tail_energy_ok`, `aac_peak_in_target`, `decoded_zero_clipping` all true; ladder (deterministic): +0.60 → **−1.41 ✔**, +0.48 → −1.53, +0.36 → −1.65, +0.24 → −1.77, +0.12 → −1.89, 0.00 → −2.01, −0.12 → −2.12, −0.18 → −2.18 dBFS.
+
+## Identity proofs (nothing visual or timing-related touched)
+
+- `ve2-audio-timeline.json` md5 **`46df7fe817e08aa30a093b113acfa9e1`** — byte-identical to Phase 4.1/4.2/4.3 (placements, word timings, captions frozen).
+- `scene/timeline.js` → `prototype/timeline.js` regenerated byte-identical.
+- Re-mux (`-c:v copy`): video stream MD5 **`b7f3cd300eadf5bc4d39aa8334367dbe`** unchanged; **1819 frames**, 1080×1920 @30 fps, **60.633333 s**.
+- **determinism:** two independent builds → logs byte-identical AND `narration_mix_phase4.m4a`, both `ve2-phase4-audio-verify.json` copies, `ve2-audio-timeline.json`, both `timeline.js` byte-identical across runs.
+- **captionSweep 4.4** (`ve2-phase44-caption-sweep.json`): both MP4s decode 1819/1819 frames; all 6 sweep frames **MD5-identical old-vs-new (4.3 vs 4.4)** → captions and all burned-in visuals provably unchanged.
+- gemini TTS decoder: **SELFTEST_OK** (offline).
+
+## Phase 4.4 files
+
+- `download/ve2-phase4-25d-enzo-sfx.mp4` — re-muxed deliverable (clean narration, video bit-exact)
+- `download/ve2-phase4-audio/narration_mix_phase4.m4a` — blob-free linear mix
+- `download/ve2-phase4-audio-verify.json` — updated with `tail_cleanup_mode/note`, per-segment strip metrics, `tail_energy_check`
+- `download/ve2-phase44-caption-sweep.json` — frame identity proof
+- `tools/ve2_build_audio_phase4.py`, `tools/gemini_tts_segments.py` — Phase 4.4 change set
+
+## Honest notes
+
+- The narration FLAC assets themselves are NOT regenerated (no TTS call): the strip happens at load time in the build, so the committed source files keep the C2PA blob (provenance preserved); any FUTURE regeneration through the fixed `gemini_tts_segments.py` will produce clean FLACs directly.
+- The mix is now ~3.4 dB louder than 4.3 (speech mean −22.06 vs −25.50): the blob no longer forces the −9.5 dB headroom trim. Still a pure linear chain (one static gain + one static trim) — no dynamics, no pumping.
+- Last-word caption ends keep their frozen 4.3 times (task requirement: timeline JSON byte-identical); captions merely linger over the now-silent clean tail exactly as before.
+- Both full builds hit the sandbox's 595 s shell timeout at the very END (log complete, `AUDIO_BUILD_OK` printed, all artifacts flushed and md5-compared); the captionSweep probe also hit it after printing `CAPTION_SWEEP_OK` and flushing its JSON. No data was affected.

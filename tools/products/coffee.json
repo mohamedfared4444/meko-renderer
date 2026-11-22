@@ -53,6 +53,19 @@
     { "num": "04", "label_ar": "الطحن", "t0": 33.4, "t1": 41.2 },
     { "num": "05", "label_ar": "الاستخلاص", "t0": 41.2, "t1": 51.0 }
   ],
+  "end_card": {
+    "line1_ar": "من حبة البن", "line2_ar": "إلى فنجان قهوة",
+    "sub1_ar": "تحميص وطحن وتحضير وصب", "sub2_ar": "كل ذلك على خط واحد"
+  },
+  "world": {
+    "layer_banners": [
+      { "key": "ROASTER", "label_ar": "محمة القهوة" },
+      { "key": "GRINDER", "label_ar": "أسطانة الطحن" },
+      { "key": "TANK", "label_ar": "خزان التحضير" },
+      { "key": "FUNNEL", "label_ar": "الصب في الفناجين" },
+      { "key": "TUNNEL", "label_ar": "نفق التبريد" }
+    ]
+  },
   "assets": {
     "narration_dir": "download/ve2-narration-coffee",
     "segments_report": "segments_report.json",

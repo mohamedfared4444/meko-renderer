@@ -60,3 +60,18 @@ python3 tools/ve2_build_audio_phase4.py --spec tools/products/<id>.json
 
 التفاصيل الكاملة وإثبات عدم الانحدار (md5s طابقة بايت-ببايت) في
 `tools/products/README.md`.
+
+## Phase 5 Step 2 — ربط visuals بالموزّع (spec-driven banners)
+
+كل نصوص المنتج في المحرك (`engine-world.js`) — العنوان، الـ pill، الـ chips
+(`banners[]`)، كارت النهاية (`end_card`)، ولفافات الآلات داخل المشهد
+(`world.layer_banners`) — تُقرأ الآن من `scene/product-data.js` المولّد من
+الـ spec؛ لا يوجد أي نص منتج داخل كود المحرك، وهندسة القالب (مواضع الآلات)
+تظل في المحرك. التحقق: A/B بعشرة لقطات بين المحرك القديم والجديد متطابقة
+بايت-ببايت، `--verify` PASS، `--determinism` PASS، وملفات الـ frozen الأربعة
+بلا أي تغيير.
+
+```bash
+python3 tools/ve2_product_spec.py render-data tools/products/<id>.json --out <scene dir>   # يولّد product-data.js (مجاني)
+VE2_SCENE_URL="file://<scene dir>/scene.html" python3 prototype/render_frames.py --verify  # فحوصات التخطيط
+```

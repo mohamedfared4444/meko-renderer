@@ -53,6 +53,19 @@
     { "num": "04", "label_ar": "الصب في القوالب", "t0": 33.8, "t1": 42.6 },
     { "num": "05", "label_ar": "التجفيف والتقطيع", "t0": 42.6, "t1": 53.5 }
   ],
+  "end_card": {
+    "line1_ar": "من الزيوت الطبيعية", "line2_ar": "إلى قطعة الصابون",
+    "sub1_ar": "خلط وصب وتبريد وتجفيف", "sub2_ar": "كل ذلك على خط واحد"
+  },
+  "world": {
+    "layer_banners": [
+      { "key": "ROASTER", "label_ar": "وعاء الزيوت" },
+      { "key": "GRINDER", "label_ar": "أسطانة الخلط" },
+      { "key": "TANK", "label_ar": "خزان الصابون السايل" },
+      { "key": "FUNNEL", "label_ar": "الصب في القوالب" },
+      { "key": "TUNNEL", "label_ar": "نفق التبريد" }
+    ]
+  },
   "assets": {
     "narration_dir": "download/ve2-narration-soap",
     "segments_report": "segments_report.json",

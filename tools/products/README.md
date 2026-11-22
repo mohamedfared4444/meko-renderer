@@ -27,7 +27,11 @@ about a product is hardcoded in code any more.
   `caption_groups` (اختياري — إيقاع كابشن صريح، مثلاً كارت النهاية)
 - `audio_policy` — `lead_s`, `gap_seg1_seg2_s`, `anchors_s`, `post_cut_offset_s`,
   `pause_keep_s`, `min_precut_buffer_s`, `min_postcut_resume_s`
-- `banners[]` (اختياري) — شرائح المشاهد على الشاشة (`num`, `label_ar`, `t0/t1`)
+- `banners[]` — شرائح المشاهد على الشاشة (`num`, `label_ar`, `t0/t1`) — تُقرأ في
+  المحرك من Phase 5 step 2 (stage chips)
+- `end_card` — كارت النهاية (`line1_ar`, `line2_ar`, `sub1_ar`, `sub2_ar`)
+- `world` — لفافات الآلات داخل المشهد (`layer_banners[]` = `key` + `label_ar`)؛
+  المواضع تظل في هندسة القالب بالمحرك، والنصوص من الـ spec
 - `assets` — مجلد الـ TTS الناتج + `segments_report` + نمط ملفات الفلاك
 - `outputs` — مسارات `ve2-audio-timeline.json` و `timeline.js`
 - `frozen` (اختياري) — خط أساس الانحدار للبناء المعتمد: placements/ends_at + md5s
@@ -50,10 +54,15 @@ about a product is hardcoded in code any more.
    `python3 tools/ve2_build_audio_phase4.py --spec tools/products/<id>.json`
    — يقرأ فلاكات المنتج من `assets`، يطبّق سياسة الصوت من الـ spec، يكتب
    `ve2-audio-timeline.json` ويعيد توليد `scene/timeline.js` تلقائيًا.
-5. **الرندر** (محرك 2.5D الحالي): `smoke.py` → `render_frames.py` → `encode_chunks.py`
-   — ثم **اربط الـ visuals** (engine-world.js) بالمنتج الجديد في خطوة Phase 5 التالية
-   (بيانات الـ banners موجودة بالفعل في الـ spec).
-6. **جمّد خط الأساس**: بعد اعتماد البناء، أضف `frozen` (placements + md5s)
+5. **ولّد بيانات الرندر** (بدون أي مصاريف):
+   `python3 tools/ve2_product_spec.py render-data tools/products/<id>.json --out <scene dir>`
+   — يكتب `product-data.js` (`window.VE2_PRODUCT`) بجوار `scene.html`.
+   المحرك يقرأ منه العنوان والـ pill والـ chips (`banners[]`) وكارت النهاية
+   (`end_card`) ولفافات الآلات (`world.layer_banners`) — لا يوجد أي نص منتج
+   داخل `engine-world.js`. مفتاح آلة غير معروف أو block ناقص => خطأ فوري واضح.
+6. **الرندر** (محرك 2.5D الحالي): `smoke.py` → `render_frames.py` → `encode_chunks.py`
+   — بيانات الـ visuals كلها الآن من الـ spec.
+7. **جمّد خط الأساس**: بعد اعتماد البناء، أضف `frozen` (placements + md5s)
    إلى الـ spec ليصبح فحص الانحدار تلقائيًا.
 
 ## أوامر الفحص
@@ -63,6 +72,7 @@ python3 tools/ve2_product_spec.py validate tools/products/chocolate.json
 python3 tools/ve2_product_spec.py show      tools/products/coffee.json
 python3 tools/ve2_product_spec.py policy    tools/products/soap.json     # ما يستهلكه بناء الصوت حرفيًا
 python3 tools/ve2_product_spec.py skeleton  tools/products/coffee.json   # هيكل التايم لاين قبل الصوت
+python3 tools/ve2_product_spec.py render-data tools/products/coffee.json --out /tmp/preview   # بيانات الرندر (مجاني)
 python3 tools/ve2_product_spec.py check-chocolate                        # حارس انحدار الشوكولاتة
 ```
 
@@ -79,6 +89,20 @@ python3 tools/ve2_product_spec.py check-chocolate                        # حا�
 | `scene/timeline.js` | `275e319aa254052287528f995d7a0e74` |
 
 فيديو Phase-4.4 (1819 إطار / 60.633s / 1080×1920@30) لم يُلمس إطلاقًا.
+
+## إثبات عدم الانحدار البصري (Phase 5 step 2 — ربط الـ banners بالـ spec)
+
+نصوص المنتج في `engine-world.js` (العنوان، الـ pill، الـ chips `banners[]`،
+كارت النهاية `end_card`، لفافات الآلات `world.layer_banners`) صارت تُقرأ من
+`scene/product-data.js` المولّد من الـ spec — ولا يوجد أي نص منتج في الكود.
+
+- A/B بعشرة لقطات (t=1.0→59.0) بين المحرك القديم (نصوص مضمّنة) والمحرك
+  الجديد (spec-driven، chocolate): **10/10 متطابقة بايت-ببايت**.
+- `render_frames.py --verify`: PASS (كل الفحوصات + caption sweep).
+- `render_frames.py --determinism`: PASS (نفس البايتات عند t=25/40/59).
+- ملفات الـ frozen الأربعة (timeline JSON/mix/verify/timeline.js) لم تتغير.
+- ملاحظة: `VE2_SCENE_URL` (اختياري) في `render_frames.py` يشغّل الرندر على
+  مجلد scene معزول — الافتراضي بلا تغيير.
 
 ## متغيرات البيئة (اختيارية — الافتراضات بلا تغيير)
 

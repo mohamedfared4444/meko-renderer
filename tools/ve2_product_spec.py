@@ -266,6 +266,24 @@ def _semantic_errors(spec):
             errs.append(f"banners/{b['num']}: num does not match scene num "
                         f"{match[0]['num']!r}")
 
+    # world (optional, Phase 5 step 2): unique machine keys, Arabic labels
+    world = spec.get("world") or {}
+    lb = world.get("layer_banners") or []
+    lb_keys = [b.get("key") for b in lb]
+    if len(lb_keys) != len(set(lb_keys)):
+        errs.append(f"world/layer_banners: duplicate keys {lb_keys}")
+    for b in lb:
+        if lang.startswith("ar") and not re.search(r"[\u0600-\u06FF]",
+                                                  b.get("label_ar", "")):
+            errs.append(f"world/layer_banners/{b.get('key')}: language is "
+                        f"{lang} but label_ar has no Arabic characters")
+
+    # end_card (optional, Phase 5 step 2): Arabic guard on all four lines
+    for k, v in (spec.get("end_card") or {}).items():
+        if lang.startswith("ar") and not re.search(r"[\u0600-\u06FF]", v or ""):
+            errs.append(f"end_card/{k}: language is {lang} but text has no "
+                        f"Arabic characters")
+
     # frozen (optional): placements/ends_at keys must be real segments
     frozen = spec.get("frozen") or {}
     for key in ("placements_s", "ends_at_s"):
@@ -430,6 +448,48 @@ def _cmd_skeleton(args):
     return 0
 
 
+def _cmd_render_data(args):
+    """Phase 5 step 2: emit the engine-side product data file
+    (window.VE2_PRODUCT) consumed by engine-world.js. Generated from the
+    spec — no product text is hardcoded in the engine any more."""
+    spec = load_spec(args.spec)
+    missing = [k for k in ("banners", "end_card", "world") if not spec.get(k)]
+    if missing:
+        raise SpecError(f"spec cannot drive the renderer yet — missing "
+                        f"block(s): {', '.join(missing)}")
+    payload = {
+        "product": {
+            "id": spec["product"]["id"],
+            "title_ar": spec["product"]["title_ar"],
+            "pill_ar": spec["product"].get("pill_ar", ""),
+            "language": spec["product"]["language"],
+        },
+        "banners": spec["banners"],
+        "end_card": spec["end_card"],
+        "world": spec["world"],
+    }
+    js = ("// AUTO-GENERATED from tools/products/"
+          f"{spec['product']['id']}.json by tools/ve2_product_spec.py "
+          "render-data - do not edit by hand\n"
+          "window.VE2_PRODUCT = "
+          + json.dumps(payload, ensure_ascii=False, indent=1) + ";\n")
+    out = args.out
+    if out and (os.path.isdir(out) or out.endswith(os.sep)):
+        out = os.path.join(out, "product-data.js")
+    if out:
+        os.makedirs(os.path.dirname(os.path.abspath(out)) or ".",
+                    exist_ok=True)
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(js)
+        print(f"OK render-data -> {out} "
+              f"(product={payload['product']['id']}, "
+              f"chips={len(payload['banners'])}, "
+              f"layer_banners={len(payload['world']['layer_banners'])})")
+    else:
+        print(js)
+    return 0
+
+
 def _cmd_check_chocolate(args):
     spec_path = args.spec or CHOCOLATE_SPEC
     timeline_path = args.timeline or CHOCOLATE_TIMELINE
@@ -511,6 +571,14 @@ def main(argv=None):
     p.add_argument("spec")
     p.add_argument("--out", default=None)
     p.set_defaults(fn=_cmd_skeleton)
+
+    p = sub.add_parser("render-data",
+                       help="emit scene/product-data.js (window.VE2_PRODUCT) "
+                            "for the renderer")
+    p.add_argument("spec")
+    p.add_argument("--out", default=None,
+                   help="output path or directory (default: stdout)")
+    p.set_defaults(fn=_cmd_render_data)
 
     p = sub.add_parser("check-chocolate",
                        help="regression guard: spec vs committed timeline")

@@ -9,7 +9,10 @@ Modes:
 import argparse, hashlib, json, os, sys, time
 from multiprocessing import Process
 
-SCENE = "file:///home/z/my-project/visual-engine-2/scene/scene.html"
+# PHASE 5 STEP 2: VE2_SCENE_URL env override (default unchanged) lets the
+# renderer run against an isolated scene dir for A/B regression verification.
+SCENE = os.environ.get("VE2_SCENE_URL",
+                       "file:///home/z/my-project/visual-engine-2/scene/scene.html")
 
 VERIFY_JS = r"""
 () => {
@@ -128,7 +131,9 @@ VERIFY_JS = r"""
     const opOK = seq[0].op < 0.02 && seq[3].op > 0.95 && seq[2].op > seq[1].op && seq[1].op > seq[0].op;
     out.heroEntrance = { seq: seq.map(x=>({t:x.t,op:+x.op.toFixed(3)})), pass: opOK };
   }
-  // ---------- 6) Fix 6: funnel + tunnel banners ----------
+  // ---------- 6) Fix 6: funnel + tunnel banners (PHASE 5 STEP 2: expected
+  // labels come from window.VE2_PRODUCT.world; fallback keeps the legacy
+  // chocolate strings for scenes without product-data.js) ----------
   {
     window.__ve2.renderAt(56.5);
     const banners = [...document.querySelectorAll('.ve2-banner')].map(g => {
@@ -137,8 +142,11 @@ VERIFY_JS = r"""
       return {text: tx.textContent, left: b.left, top: b.top, right: b.right, bottom: b.bottom,
               visible: b.right>0 && b.left<1080 && b.bottom>0 && b.top<1920};
     });
-    const hasFunnel = banners.some(b=>b.text==='الصب في القوالب' && b.visible);
-    const hasTunnel = banners.some(b=>b.text==='نفق التبريد' && b.visible);
+    const lb = (window.VE2_PRODUCT && window.VE2_PRODUCT.world
+                && window.VE2_PRODUCT.world.layer_banners) || [];
+    const labelOf = key => { const w = lb.find(x => x.key === key); return w ? w.label_ar : (key==='FUNNEL' ? 'الصب في القوالب' : 'نفق التبريد'); };
+    const hasFunnel = banners.some(b=>b.text===labelOf('FUNNEL') && b.visible);
+    const hasTunnel = banners.some(b=>b.text===labelOf('TUNNEL') && b.visible);
     out.banners = { banners, pass: hasFunnel && hasTunnel };
   }
   // ---------- 7) chips: label must not touch the number bean ----------

@@ -164,6 +164,21 @@
       "t1": 54.4
     }
   ],
+  "end_card": {
+    "line1_ar": "من حبة الكاكاو",
+    "line2_ar": "إلى لوح الشوكولاتة",
+    "sub1_ar": "تحميص وطحن ومعالجة وصب",
+    "sub2_ar": "كل ذلك على خط واحد"
+  },
+  "world": {
+    "layer_banners": [
+      { "key": "ROASTER", "label_ar": "طبلية التحميص" },
+      { "key": "GRINDER", "label_ar": "أسطانة الطحن" },
+      { "key": "TANK", "label_ar": "المعالجة والخلط" },
+      { "key": "FUNNEL", "label_ar": "الصب في القوالب" },
+      { "key": "TUNNEL", "label_ar": "نفق التبريد" }
+    ]
+  },
   "assets": {
     "narration_dir": "download/ve2-narration-enzo",
     "segments_report": "segments_report.json",

@@ -1,0 +1,49 @@
+{
+  "phase": 5,
+  "sub_phase": "step2",
+  "check": "engine-world.js banners/chips wired to product spec — chocolate zero-visual-regression proof + coffee non-paid verification",
+  "date_utc": "2026-11-22T15:10:00Z",
+  "base_commit": "8c9c9210602ad84949f5421420cc40fb89e954c0",
+  "wiring": {
+    "channel": "scene/product-data.js (generated: tools/ve2_product_spec.py render-data) -> window.VE2_PRODUCT",
+    "spec_blocks_added": ["end_card", "world.layer_banners"],
+    "engine_reads_from_spec": ["title_ar", "pill_ar", "banners[] (stage chips)", "end_card (4 lines)", "world.layer_banners (5 machine labels, anchors stay in template geometry)"],
+    "hardcoded_product_text_removed_from_engine": true,
+    "fail_fast": "render-data refuses specs without banners/end_card/world; engine throws on missing window.VE2_PRODUCT and on unknown machine keys (proven: injected MIXER3000 -> pageerror 'has no template banner anchor', __ve2Ready never set)"
+  },
+  "chocolate_ab_visual_regression": {
+    "method": "same Playwright renderer, two isolated scene dirs: OLD = git HEAD engine (hardcoded text), NEW = spec-driven engine + generated product-data.js (chocolate)",
+    "stills_t": [1.0, 16.0, 20.0, 27.0, 38.0, 46.0, 50.0, 55.0, 57.5, 59.0],
+    "coverage": "title card, all 4 chip windows, all 5 world banner scenes, demold, wide reveal, end card",
+    "result": "10/10 PNGs byte-identical",
+    "verify": "PASS (title/gap/end-card margins/caption sweep<=2 words/banners visible/chips gap/mold overlap/inlet cleanliness)",
+    "determinism": "PASS (t=25/40/59 re-render hashes identical)"
+  },
+  "frozen_hashes_unchanged": {
+    "download/ve2-audio-timeline.json": "46df7fe817e08aa30a093b113acfa9e1",
+    "download/ve2-phase4-audio/narration_mix_phase4.m4a": "785989aaf9982571039764d183a2606c",
+    "download/ve2-phase4-audio-verify.json": "994bd9c433c74e8393527960f68da9ef",
+    "prototype/timeline.js": "275e319aa254052287528f995d7a0e74",
+    "check_chocolate": "PASS (11/11)",
+    "video": "1080x1920 @ 30fps, 1819 frames, 60.633s — untouched"
+  },
+  "validator_updates": {
+    "schema": "added optional end_card + world blocks (additive; additionalProperties preserved)",
+    "semantic_checks_added": ["world/layer_banners duplicate keys", "Arabic-script guards (world labels + end_card lines)"],
+    "negative_tests": {
+      "latin_layer_banner_label": "REJECTED",
+      "duplicate_banner_keys": "REJECTED",
+      "latin_end_card_line": "REJECTED",
+      "unknown_machine_key": "ACCEPTED by validator (by design) / REJECTED by engine fail-fast (proven above)",
+      "missing_end_card": "ACCEPTED by validator (blocks optional) / REJECTED by render-data + engine fail-fast"
+    }
+  },
+  "coffee_non_paid_verification": {
+    "validate": "PASS (7 scenes / 7 segments / 58.0s @ 30fps, Egyptian Arabic)",
+    "skeleton": "PASS (1740 frames, cuts 13.5/22.8/33.4/41.2/51.0/54.2)",
+    "policy": "PASS (lead 1.4, g12 0.8, anchor seg5 33.9 — derived verbatim from spec)",
+    "render_data": "PASS (chips=4, layer_banners=5, end card generated to preview dir)",
+    "paid_tts_called": false
+  },
+  "result": "PASS"
+}

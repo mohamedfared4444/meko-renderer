@@ -125,6 +125,40 @@
         }
       }
     },
+    "end_card": {
+      "type": "object",
+      "required": ["line1_ar", "line2_ar", "sub1_ar", "sub2_ar"],
+      "additionalProperties": false,
+      "description": "optional closing-card texts (Phase 5 step 2: consumed by engine-world.js buildEndCard); values must be verbatim from the approved build for the preset product",
+      "properties": {
+        "line1_ar": { "type": "string", "minLength": 1, "description": "closing card line 1 (cream)" },
+        "line2_ar": { "type": "string", "minLength": 1, "description": "closing card line 2 (gold)" },
+        "sub1_ar": { "type": "string", "minLength": 1, "description": "closing card subtitle line 1" },
+        "sub2_ar": { "type": "string", "minLength": 1, "description": "closing card subtitle line 2" }
+      }
+    },
+    "world": {
+      "type": "object",
+      "required": ["layer_banners"],
+      "additionalProperties": false,
+      "description": "optional world-space layer banner texts (Phase 5 step 2: consumed by engine-world.js buildBanners); positions stay in the engine template geometry, keyed by machine key",
+      "properties": {
+        "layer_banners": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": ["key", "label_ar"],
+            "additionalProperties": false,
+            "properties": {
+              "key": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$", "description": "machine key in the engine template geometry (G.<key>.banner anchor), e.g. ROASTER" },
+              "label_ar": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
     "assets": {
       "type": "object",
       "required": ["narration_dir", "segments_report", "flac_pattern"],

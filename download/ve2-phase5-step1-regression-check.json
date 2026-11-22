@@ -1,0 +1,59 @@
+{
+  "phase": 5,
+  "sub_phase": "step1",
+  "check": "clean spec-driven rebuild + frozen-baseline regression guard (chocolate)",
+  "date_utc": "2026-11-22T13:45:00Z",
+  "commit_under_test": "75ae9d54b0ed664daccd4945c55ef9f340c15523",
+  "spec": "tools/products/chocolate.json",
+  "environment": {
+    "python": "3.x + numpy 2.1.3 + jsonschema 4.26.0",
+    "ffmpeg": "7.1.5-0+deb13u1",
+    "isolation": "VE2_ROOT=/tmp/ve2p5_root VE2_DL=/tmp/ve2p5_dl (live workspace untouched)"
+  },
+  "approved_segments": {
+    "source": "git tree at 8b1a952 (approved Phase-4.4 takes, 'take A')",
+    "sanity_check": "raw durations match committed ve2-phase4-audio-verify.json: seg1=3.801s, seg5=7.641s",
+    "note": "repo working tree now carries regenerated workflow takes (e364e10 'take B' raw; origin 2151393 = same takes with clean C2PA-free demux). Those are DIFFERENT audio by design; the frozen baseline is pinned to take A, the input set of the approved build."
+  },
+  "committed_outputs_match_frozen": {
+    "download/ve2-audio-timeline.json": "46df7fe817e08aa30a093b113acfa9e1",
+    "download/ve2-phase4-audio/narration_mix_phase4.m4a": "785989aaf9982571039764d183a2606c",
+    "download/ve2-phase4-audio-verify.json": "994bd9c433c74e8393527960f68da9ef",
+    "prototype/timeline.js": "275e319aa254052287528f995d7a0e74",
+    "result": "PASS (4/4 identical to spec frozen md5s)"
+  },
+  "spec_driven_rebuild": {
+    "command": "VE2_ROOT=/tmp/ve2p5_root VE2_DL=/tmp/ve2p5_dl python3 tools/ve2_build_audio_phase4.py --spec tools/products/chocolate.json",
+    "outputs": {
+      "ve2-audio-timeline.json": "46df7fe817e08aa30a093b113acfa9e1",
+      "narration_mix_phase4.m4a": "785989aaf9982571039764d183a2606c",
+      "ve2-phase4-audio-verify.json": "994bd9c433c74e8393527960f68da9ef",
+      "timeline.js": "275e319aa254052287528f995d7a0e74"
+    },
+    "byte_identical_to_approved": true,
+    "result": "PASS (4/4 byte-identical)"
+  },
+  "validator": {
+    "validate_chocolate": "PASS (7 scenes / 7 segments / 60.6333s @ 30fps)",
+    "validate_coffee": "PASS (7 scenes / 7 segments / 58.0s @ 30fps, Egyptian Arabic)",
+    "validate_soap": "PASS (7 scenes / 7 segments / 62.0s @ 30fps, Egyptian Arabic)",
+    "check_chocolate": "PASS (11/11: video meta, scenes, segment ids, texts, frozen placements, frozen ends_at, caption groups, 4 frozen md5s)",
+    "negative_tests": {
+      "latin_narration_text": "REJECTED",
+      "scene_window_gap": "REJECTED",
+      "frames_inconsistent_with_duration": "REJECTED",
+      "segment_mapped_to_missing_scene": "REJECTED",
+      "missing_voice_block": "REJECTED",
+      "result": "PASS (5/5 rejected with precise diagnostics)"
+    }
+  },
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "frames": 1819,
+    "duration_s": 60.6333,
+    "touched": false
+  },
+  "result": "PASS"
+}

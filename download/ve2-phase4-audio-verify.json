@@ -1,5 +1,6 @@
 {
   "phase": 4,
+  "sub_phase": "4.2",
   "windows": [],
   "processing": [
     {
@@ -128,14 +129,48 @@
     "sfx_enabled": false,
     "sfx_seed": 987126,
     "sfx_note": "phase 4.1: procedural SFX removed per user report of crackly hiss/tick (نغمشة) between narration lines; bus = digital silence",
-    "narration_limited_speech_mean_db": -16.79,
+    "narration_limited_speech_mean_db": -16.8,
     "narration_limited_peak_dbfs": -2.0,
-    "music_gain_db": -19.32,
-    "mix_peak_dbfs": -1.54,
-    "aac_scale_db": -0.55,
-    "aac_decoded_peak_dbfs": -1.47,
+    "music_enabled": false,
+    "music_gain_db": 0.0,
+    "music_note": "phase 4.2: ambient music pad muted per user report of a soft هششش / TV-switch artifact between narration lines; mix = pure narration, gaps = digital silence",
+    "mix_peak_dbfs": -2.0,
+    "aac_scale_db": -0.18,
+    "aac_decoded_peak_dbfs": -1.48,
+    "aac_ladder": [
+      {
+        "scale_db": 0.0,
+        "decoded_peak_dbfs": -0.56
+      },
+      {
+        "scale_db": -0.12,
+        "decoded_peak_dbfs": -1.14
+      },
+      {
+        "scale_db": -0.18,
+        "decoded_peak_dbfs": -1.48
+      },
+      {
+        "scale_db": -0.24,
+        "decoded_peak_dbfs": -1.73
+      },
+      {
+        "scale_db": -0.3,
+        "decoded_peak_dbfs": -2.13
+      },
+      {
+        "scale_db": -0.55,
+        "decoded_peak_dbfs": -2.3
+      }
+    ],
+    "aac_target_window_dbfs": [
+      -1.9,
+      -1.3
+    ],
+    "aac_peak_in_target": true,
+    "aac_zero_clipping": true,
     "mix_duration": 60.633,
-    "mix_mean_db": -19.4,
+    "mix_mean_db": -19.2,
     "mix_max_db": -1.5,
     "windows": [
       {
@@ -144,8 +179,8 @@
           1.9,
           4.97
         ],
-        "mean_db": -17.7,
-        "max_db": -2.3
+        "mean_db": -17.3,
+        "max_db": -2.2
       },
       {
         "kind": "ambient",
@@ -153,8 +188,8 @@
           5.37,
           5.89
         ],
-        "mean_db": -34.6,
-        "max_db": -27.0
+        "mean_db": -91.0,
+        "max_db": -91.0
       },
       {
         "kind": "speech",
@@ -162,8 +197,8 @@
           15.44,
           23.09
         ],
-        "mean_db": -18.4,
-        "max_db": -2.2
+        "mean_db": -18.1,
+        "max_db": -1.2
       },
       {
         "kind": "speech",
@@ -171,7 +206,7 @@
           26.89,
           33.84
         ],
-        "mean_db": -17.9,
+        "mean_db": -17.6,
         "max_db": -2.2
       },
       {
@@ -180,8 +215,8 @@
           34.54,
           36.7
         ],
-        "mean_db": -36.6,
-        "max_db": -26.7
+        "mean_db": -91.0,
+        "max_db": -91.0
       },
       {
         "kind": "speech",
@@ -189,8 +224,8 @@
           37.45,
           43.4
         ],
-        "mean_db": -17.4,
-        "max_db": -2.3
+        "mean_db": -17.0,
+        "max_db": -2.2
       },
       {
         "kind": "speech",
@@ -198,8 +233,8 @@
           46.25,
           52.11
         ],
-        "mean_db": -17.9,
-        "max_db": -2.3
+        "mean_db": -17.7,
+        "max_db": -2.2
       },
       {
         "kind": "ambient",
@@ -207,8 +242,8 @@
           52.61,
           54.46
         ],
-        "mean_db": -34.5,
-        "max_db": -26.9
+        "mean_db": -91.0,
+        "max_db": -91.0
       },
       {
         "kind": "ambient",
@@ -216,8 +251,8 @@
           0.05,
           1.5
         ],
-        "mean_db": -39.1,
-        "max_db": -27.3
+        "mean_db": -91.0,
+        "max_db": -91.0
       },
       {
         "kind": "speech",
@@ -225,8 +260,8 @@
           54.96,
           59.75
         ],
-        "mean_db": -18.6,
-        "max_db": -2.3
+        "mean_db": -18.3,
+        "max_db": -2.0
       }
     ],
     "gap_hf_check": [
@@ -236,8 +271,8 @@
           5.89
         ],
         "sfx_zone_1.5k_19k_max_db": {
-          "decoded_m4a": -135.0,
-          "preencode_wav": -212.0
+          "decoded_m4a": -240.0,
+          "preencode_wav": -240.0
         },
         "ok": true
       },
@@ -247,8 +282,8 @@
           36.7
         ],
         "sfx_zone_1.5k_19k_max_db": {
-          "decoded_m4a": -138.6,
-          "preencode_wav": -220.1
+          "decoded_m4a": -240.0,
+          "preencode_wav": -240.0
         },
         "ok": true
       },
@@ -258,8 +293,8 @@
           54.46
         ],
         "sfx_zone_1.5k_19k_max_db": {
-          "decoded_m4a": -133.7,
-          "preencode_wav": -218.3
+          "decoded_m4a": -240.0,
+          "preencode_wav": -240.0
         },
         "ok": true
       },
@@ -269,19 +304,105 @@
           1.5
         ],
         "sfx_zone_1.5k_19k_max_db": {
-          "decoded_m4a": -140.1,
-          "preencode_wav": -192.5
+          "decoded_m4a": -240.0,
+          "preencode_wav": -240.0
         },
         "ok": true
       }
     ],
     "gap_hf_ok": true,
+    "gap_silence_check": [
+      {
+        "gap": "lead_in",
+        "win": [
+          0.05,
+          1.5
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg1->seg2",
+        "win": [
+          5.37,
+          5.89
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg2->seg3",
+        "win": [
+          12.23,
+          14.84
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg3->seg4",
+        "win": [
+          23.69,
+          26.29
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg4->seg5",
+        "win": [
+          34.44,
+          37.05
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg5->seg6",
+        "win": [
+          43.8,
+          45.85
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg6->seg7",
+        "win": [
+          52.51,
+          54.56
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "tail_out",
+        "win": [
+          60.15,
+          60.55
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      }
+    ],
+    "gap_silence_ok": true,
+    "decoded_abs_max": 0.843209,
+    "decoded_true_peak_dbfs": -1.48,
+    "decoded_zero_clipping": true,
     "boundary_gaps": [
       {
         "at": 14.35,
         "label": "cut1 scene2 start",
-        "last_speech_end": 12.145,
-        "gap_s": 2.205,
+        "last_speech_end": 12.14,
+        "gap_s": 2.21,
         "ok": true,
         "next_speech_start": 15.015,
         "resume_after_cut": 0.665
@@ -307,8 +428,8 @@
       {
         "at": 44.17,
         "label": "cut4 scene5 start",
-        "last_speech_end": 43.715,
-        "gap_s": 0.455,
+        "last_speech_end": 43.71,
+        "gap_s": 0.46,
         "ok": true,
         "next_speech_start": 46.03,
         "resume_after_cut": 1.86
@@ -325,8 +446,8 @@
       {
         "at": 60.633,
         "label": "video end",
-        "last_speech_end": 60.06,
-        "gap_s": 0.573,
+        "last_speech_end": 60.055,
+        "gap_s": 0.578,
         "ok": true
       }
     ],

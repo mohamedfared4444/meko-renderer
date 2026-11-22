@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """VE2 Phase 4 — tightened narration pacing + deterministic factory SFX.
 
+PHASE 4.2 (music pad removal, user-reported "هششش / TV-switch" fix):
+  After the Phase-4.1 SFX removal the user STILL heard a soft "هششش"
+  / TV channel-switch / TV-off artifact between narration lines. With
+  the SFX bus already digital silence, the only remaining non-speech
+  source was the warm ambient music pad: its chord-boundary envelope
+  ramps (1.0 s release every ~15.16 s), tremolo and 2.5 s end fade can
+  read as a faint "TV cut" under quiet gaps. MUSIC_ENABLED = False now
+  mutes the pad entirely (bus gain exactly 0.0): the mix is PURE Enzo
+  narration with clean 20 ms raised-cosine micro-fades at every
+  segment edge and EXACT digital silence between lines. Segment
+  placements, word timings, ve2-audio-timeline.json, timeline.js and
+  the 2.5D frames are untouched (md5-verified).
+
 PHASE 4.1 (SFX removal, user-reported "نغمشة" fix):
   The user reported an unpleasant crackly/hissy/ticking noise after
   speech / between lines. Root cause = the procedural SFX bus (roller
@@ -33,6 +46,7 @@ Outputs: download/ve2-audio-timeline.json (+ timeline.js rebuild),
 import json
 import math
 import os
+import shutil
 import subprocess
 import sys
 
@@ -78,6 +92,23 @@ SFX_SEED = 987126
 # mix is exactly narration + warm ambient music pad. Flip to True only
 # if a future pass redesigns the SFX from the ground up.
 SFX_ENABLED = False
+
+# PHASE 4.2: ambient music pad disabled (user still heard a soft
+# "هششش" / TV channel-switch / TV-off artifact between narration lines
+# even after the SFX removal). With the SFX bus already digital
+# silence, the only remaining non-speech source was the warm pad: its
+# chord-boundary envelope ramps (1.0 s release every ~15.16 s), tremolo
+# and 2.5 s end fade can read as a faint "TV cut" under quiet gaps.
+# When False the pad gain is exactly 0.0 in the mix: PURE Enzo
+# narration with clean 20 ms raised-cosine micro-fades at every
+# segment edge and EXACT digital silence between lines. Flip to True
+# only if a future pass redesigns the pad with gap-safe envelopes.
+MUSIC_ENABLED = False
+
+# PHASE 4.2: micro-fade length (raised cosine) at every segment edge,
+# applied on the MIX BUS ONLY (never on finals[...], so word timings,
+# placements and the timeline JSON stay byte-identical).
+MICRO_FADE_S = 0.020
 
 
 def run(cmd, **kw):
@@ -376,7 +407,8 @@ def main():
     texts = {s["id"]: s["text"] for s in rep["segments"]}
     order = [s["id"] for s in rep["segments"]]
 
-    report = {"phase": 4, "windows": [], "processing": [], "placements": [],
+    report = {"phase": 4, "sub_phase": "4.2", "windows": [],
+              "processing": [], "placements": [],
               "gaps": [], "verify": {}}
 
     # ---------- 1) load + per-segment processing ----------
@@ -578,7 +610,9 @@ def main():
     tL = tL / mx * 0.5; tR = tR / mx * 0.5
     music = np.stack([tL, tR], axis=1).astype(np.float32)
     save_wav(os.path.join(AUD, "music_pad_raw.wav"), music.ravel(), ch=2)
-    print("[music] pad generated (F-C-Dm-Bb, deterministic)")
+    print("[music] pad generated (F-C-Dm-Bb, deterministic) — "
+          + ("active in mix" if MUSIC_ENABLED else
+             "MUTED in mix (phase 4.2: MUSIC_ENABLED=False)"))
 
     # ---------- 5) SFX bus (DISABLED in Phase 4.1 — "نغمشة" fix) ----------
     # No procedural SFX at all: the bus is digital silence, so the mix is
@@ -604,13 +638,25 @@ def main():
         "bus = digital silence")
 
     # ---------- 6) narration track + level staging ----------
+    # PHASE 4.2: 20 ms raised-cosine micro-fades at every segment edge.
+    # Applied to the MIX BUS ONLY (finals[...] untouched), so word
+    # timings, placements and ve2-audio-timeline.json stay byte-identical.
+    nf = int(MICRO_FADE_S * SR)
+    ramp = 0.5 * (1.0 - np.cos(np.pi * np.arange(nf) / nf))
     nar = np.zeros(n_total, dtype=np.float64)
     for sid in order:
         a = finals[sid]
         i0 = int(s[sid] * SR)
         i1 = min(i0 + len(a), n_total)
-        nar[i0:i1] += a[:i1 - i0]
+        seg = a[:i1 - i0].astype(np.float64).copy()
+        if len(seg) > 2 * nf:
+            seg[:nf] *= ramp
+            seg[-nf:] *= ramp[::-1]
+        nar[i0:i1] += seg
     save_wav(os.path.join(AUD, "narration_raw.wav"), nar.astype(np.float32))
+    print(f"[nar] {len(order)} segments placed, "
+          f"{int(MICRO_FADE_S * 1000)} ms raised-cosine micro-fades at "
+          f"every edge (mix bus only)")
 
     nar_f = nar.astype(np.float64)
     sp_mask = np.zeros(n_total, dtype=bool)
@@ -626,7 +672,8 @@ def main():
     cur_m = 20 * math.log10(mm + 1e-9)
     gain_m = -35.0 - cur_m
     print(f"[levels] speech mean={cur_sp:.1f}dB gain={gain_n:+.2f}dB | "
-          f"music mean={cur_m:.1f}dB gain={gain_m:+.2f}dB")
+          f"music mean={cur_m:.1f}dB gain={gain_m:+.2f}dB"
+          + ("" if MUSIC_ENABLED else "  (music MUTED — not applied)"))
 
     gn0 = 10 ** (gain_n / 20)
     x = gn0 * nar_f
@@ -642,14 +689,25 @@ def main():
     print(f"[levels] limited speech mean={nar_mean_db:.2f}dB peak={pk_l:.2f}dBFS")
     report["verify"]["narration_limited_speech_mean_db"] = round(nar_mean_db, 2)
     report["verify"]["narration_limited_peak_dbfs"] = round(pk_l, 2)
-    report["verify"]["music_gain_db"] = round(gain_m, 2)
+    report["verify"]["music_enabled"] = bool(MUSIC_ENABLED)
+    report["verify"]["music_gain_db"] = (round(gain_m, 2) if MUSIC_ENABLED
+                                         else 0.0)
+    report["verify"]["music_note"] = (
+        "phase 4.2: ambient music pad muted per user report of a soft "
+        "\u0647\u0634\u0634\u0634 / TV-switch artifact between "
+        "narration lines; mix = pure narration, gaps = digital silence")
     if not (-18.0 <= nar_mean_db <= -16.0):
         print("!! narration speech mean out of spec [-18, -16]"); sys.exit(6)
 
-    gm = 10 ** (gain_m / 20)
+    # PHASE 4.2: muted buses contribute EXACTLY 0.0, so the mix is
+    # bit-identical to the limited narration bus and gap samples stay
+    # digital zero (0.0 * finite = 0.0 exactly in IEEE-754).
+    gm = 10 ** (gain_m / 20) if MUSIC_ENABLED else 0.0
     gs = 10 ** ((-32.0 - sfx_cur) / 20) if SFX_ENABLED else 0.0
     mixL = nar_lim + gm * tL + gs * sfx_n[:, 0]
     mixR = nar_lim + gm * tR + gs * sfx_n[:, 1]
+    if not MUSIC_ENABLED and not SFX_ENABLED:
+        print("[mix] PURE NARRATION (music + sfx buses = exact 0.0)")
     peak = max(float(np.abs(mixL).max()), float(np.abs(mixR).max()))
     pk_db = 20 * math.log10(peak + 1e-9)
     report["verify"]["mix_peak_dbfs"] = round(pk_db, 2)
@@ -664,62 +722,73 @@ def main():
     save_wav(os.path.join(AUD, "mix_final_phase4.wav"), st.ravel(), ch=2,
              fmt="f32")
 
-    # ---------- 7) iterative AAC encode, decoded peak pinned <= -1.30 dBFS
-    # (native AAC overshoot is non-monotonic w.r.t. small input scaling, so
-    #  accept any decoded peak <= -1.30 immediately and otherwise try a small
-    #  deterministic ladder of pre-scales, keeping the closest to -1.45)
-    scale_db = 0.0
-    dec_peak = None
-    best = None  # (abs(peak - (-1.45)) subject to peak <= -1.30, scale, peak)
-    ladder = [0.0, -0.12, -0.30, -0.55, -0.85]
+    # ---------- 7) iterative AAC encode, decoded peak pinned in
+    # [-1.90, -1.30] dBFS (target ~ -1.45; phase 4.2 tightened check).
+    # Native AAC overshoot is strongly non-monotonic w.r.t. small input
+    # scaling (measured on the pure-narration mix: -0.12 dB -> -1.14 dBFS
+    # but -0.30 dB -> -2.13 dBFS), so a deterministic ladder of pre-scales
+    # is tried and the candidate whose decoded peak is closest to -1.45
+    # dBFS while staying <= -1.30 dBFS wins (=> zero clipping by
+    # construction). Falls back to a candidate in (-1.30, -1.00] only if
+    # no in-window candidate exists. Each candidate is encoded to its own
+    # file; the winner is BYTE-COPIED to narration_mix_phase4.m4a (no
+    # re-encode step -> faster and guaranteed identical to the measured
+    # candidate).
+    ladder = [0.0, -0.12, -0.18, -0.24, -0.30, -0.55]
+    ladder_res = []
+    best_safe = None      # (dist, scale, peak, path) with peak <= -1.30 dBFS
+    best_fb = None        # (dist, scale, peak, path) peak in (-1.30, -1.00]
     for it, cand in enumerate(ladder, 1):
-        if cand != 0.0:
-            sg = 10 ** (cand / 20)
-            st2 = np.stack([mixL * sg, mixR * sg], axis=1).astype(np.float32)
-            save_wav(os.path.join(AUD, "mix_final_phase4.wav"), st2.ravel(),
-                     ch=2, fmt="f32")
-        r = run(["ffmpeg", "-y", "-v", "error",
-                 "-i", os.path.join(AUD, "mix_final_phase4.wav"),
-                 "-c:a", "aac", "-b:a", "192k",
-                 os.path.join(AUD, "narration_mix_phase4.m4a")])
-        if r.returncode != 0:
-            print("mix fail:", r.stderr[:300]); sys.exit(4)
-        pr = run(["ffmpeg", "-v", "info", "-i",
-                  os.path.join(AUD, "narration_mix_phase4.m4a"),
-                  "-af", "astats=metadata=1:reset=0", "-f", "null", "-"])
-        pk = [float(l.split("Peak level dB:")[1]) for l in
-              pr.stderr.splitlines() if "Peak level dB" in l]
-        dec_peak = max(pk) if pk else -99
-        print(f"[aac] pass {it} (scale {cand:+.2f} dB): "
-              f"decoded peak={dec_peak:.2f}dBFS")
-        if dec_peak <= -1.30:
-            best = (abs(dec_peak + 1.45), cand, dec_peak)
-            break
-        # keep the best safe candidate so far (no clipping, deepest OK)
-        if dec_peak <= -1.00 and (best is None or
-                                  abs(dec_peak + 1.45) < best[0]):
-            best = (abs(dec_peak + 1.45), cand, dec_peak)
-        scale_db = cand
-    if best is None:
-        print("!! no safe AAC candidate found"); sys.exit(7)
-    _, scale_db, dec_peak = best
-    if scale_db != ladder[-1] or True:
-        # deterministically re-encode the chosen candidate
-        sg = 10 ** (scale_db / 20)
+        sg = 10 ** (cand / 20)
         st2 = np.stack([mixL * sg, mixR * sg], axis=1).astype(np.float32)
+        cpath = os.path.join(AUD, f"aac_cand_{it}.m4a")
         save_wav(os.path.join(AUD, "mix_final_phase4.wav"), st2.ravel(),
                  ch=2, fmt="f32")
         r = run(["ffmpeg", "-y", "-v", "error",
                  "-i", os.path.join(AUD, "mix_final_phase4.wav"),
-                 "-c:a", "aac", "-b:a", "192k",
-                 os.path.join(AUD, "narration_mix_phase4.m4a")])
+                 "-c:a", "aac", "-b:a", "192k", cpath])
         if r.returncode != 0:
             print("mix fail:", r.stderr[:300]); sys.exit(4)
+        pr = run(["ffmpeg", "-v", "info", "-i", cpath,
+                  "-af", "astats=metadata=1:reset=0", "-f", "null", "-"])
+        pk = [float(l.split("Peak level dB:")[1]) for l in
+              pr.stderr.splitlines() if "Peak level dB" in l]
+        dec_peak = max(pk) if pk else -99
+        ladder_res.append({"scale_db": cand,
+                           "decoded_peak_dbfs": round(dec_peak, 2)})
+        print(f"[aac] pass {it} (scale {cand:+.2f} dB): "
+              f"decoded peak={dec_peak:.2f}dBFS")
+        dist = abs(dec_peak + 1.45)
+        if dec_peak <= -1.30:
+            if best_safe is None or dist < best_safe[0]:
+                best_safe = (dist, cand, dec_peak, cpath)
+        elif dec_peak <= -1.00:
+            if best_fb is None or dist < best_fb[0]:
+                best_fb = (dist, cand, dec_peak, cpath)
+    if best_safe is not None:
+        _, scale_db, dec_peak, cpath = best_safe
+    elif best_fb is not None:
+        _, scale_db, dec_peak, cpath = best_fb
+    else:
+        print("!! no safe AAC candidate found"); sys.exit(7)
+    shutil.copyfile(cpath, os.path.join(AUD, "narration_mix_phase4.m4a"))
+    for it_ in range(1, len(ladder) + 1):
+        p_ = os.path.join(AUD, f"aac_cand_{it_}.m4a")
+        if os.path.exists(p_) and p_ != cpath:
+            os.remove(p_)
     report["verify"]["aac_scale_db"] = round(scale_db, 2)
     report["verify"]["aac_decoded_peak_dbfs"] = round(dec_peak, 2)
+    report["verify"]["aac_ladder"] = ladder_res
+    report["verify"]["aac_target_window_dbfs"] = [-1.90, -1.30]
+    report["verify"]["aac_peak_in_target"] = bool(-1.90 <= dec_peak <= -1.30)
+    report["verify"]["aac_zero_clipping"] = bool(dec_peak <= -1.30)
     if dec_peak > -1.0:
         print("!! decoded peak not safely below 0 dBFS"); sys.exit(7)
-    print("[mix] narration_mix_phase4.m4a written")
+    if not report["verify"]["aac_peak_in_target"]:
+        print("!! decoded peak outside phase-4.2 target window "
+              "[-1.90, -1.30] dBFS")
+    print(f"[mix] narration_mix_phase4.m4a written "
+          f"(scale {scale_db:+.2f} dB, decoded peak {dec_peak:.2f} dBFS)")
 
     # ---------- 8) verification ----------
     dur_r = run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
@@ -765,11 +834,17 @@ def main():
     # in every narration-gap window. Hann-weighted rFFT per window; no
     # filter cold-start transients (the old ffmpeg-highpass check was
     # unreliable for that reason).
-    def decode_f32_mono(path):
+    # TRUE per-channel decode. A mono downmix must NOT be used for peak
+    # checks: libswresample's stereo->mono matrix applies a 0.7071
+    # coefficient per channel, so correlated L/R peaks are inflated by up
+    # to +3.01 dB (this produced a bogus 1.106 abs-max on the first 4.2
+    # run while the file's true per-channel peak was -2.13 dBFS).
+    def decode_f32_stereo(path):
         rr = subprocess.run(["ffmpeg", "-v", "error", "-i", path,
-                             "-f", "f32le", "-ac", "1", "-ar", str(SR),
-                             "-"], capture_output=True)
-        return np.frombuffer(rr.stdout, dtype=np.float32).astype(np.float64)
+                             "-f", "f32le", "-ar", str(SR), "-"],
+                            capture_output=True)
+        x = np.frombuffer(rr.stdout, dtype=np.float32).astype(np.float64)
+        return x.reshape(-1, 2)
 
     def band_max_db(x, lo=1500.0, hi=19000.0):
         n = len(x)
@@ -782,9 +857,11 @@ def main():
             return None
         return 20 * math.log10(float(X[m].max()) + 1e-12)
 
-    m4a_pcm = decode_f32_mono(os.path.join(AUD,
-                                           "narration_mix_phase4.m4a"))
-    wav_pcm = decode_f32_mono(os.path.join(AUD, "mix_final_phase4.wav"))
+    m4a_st = decode_f32_stereo(os.path.join(AUD,
+                                            "narration_mix_phase4.m4a"))
+    wav_st = decode_f32_stereo(os.path.join(AUD, "mix_final_phase4.wav"))
+    m4a_pcm = m4a_st.mean(axis=1)   # (L+R)/2: peaks can only shrink
+    wav_pcm = wav_st.mean(axis=1)
     gap_hf = []
     hf_ok = True
     for kind, a1, a2 in windows:
@@ -806,6 +883,50 @@ def main():
               ("OK (no crackle/hiss/ticks)" if ok else "FAIL"))
     checks["gap_hf_check"] = gap_hf
     checks["gap_hf_ok"] = bool(hf_ok)
+
+    # PHASE 4.2 — EXACT digital-silence proof between narration lines.
+    # With SFX (4.1) and the ambient music pad (4.2) disabled, every
+    # narration gap must be MATHEMATICALLY ZERO in the pre-encode WAV
+    # (pure narration bus) and at the AAC codec noise floor in the
+    # decoded m4a. Windows start 0.10 s after each segment end and end
+    # 0.10 s before the next start so the +-0.08 s trim pads (possible
+    # TTS room-tone tails) are excluded from the zero-assertion.
+    sil_windows = [("lead_in", 0.05, s["seg1"] - 0.10)]
+    for a_id, b_id in zip(order, order[1:]):
+        t0, t1 = e[a_id] + 0.10, s[b_id] - 0.10
+        if t1 - t0 >= 0.10:
+            sil_windows.append((f"{a_id}->{b_id}", t0, t1))
+    if 60.55 - (e["seg7"] + 0.10) >= 0.10:
+        sil_windows.append(("tail_out", e["seg7"] + 0.10, 60.55))
+    gap_sil = []
+    sil_ok = True
+    for label, t0, t1 in sil_windows:
+        sl = slice(int(t0 * SR), int(t1 * SR))
+        wv = wav_pcm[sl]
+        dv = m4a_pcm[sl]
+        w_max = float(np.abs(wv).max()) if wv.size else 0.0
+        d_max = float(np.abs(dv).max()) if dv.size else 0.0
+        d_db = 20 * math.log10(d_max + 1e-12)
+        ok = (w_max == 0.0) and (d_db <= -100.0)
+        sil_ok = sil_ok and ok
+        gap_sil.append({"gap": label, "win": [round(t0, 2), round(t1, 2)],
+                        "preencode_wav_abs_max": w_max,
+                        "decoded_m4a_abs_max_db": round(d_db, 1),
+                        "ok": bool(ok)})
+        w_txt = "EXACT ZERO" if w_max == 0.0 else (
+            f"{20 * math.log10(w_max + 1e-12):.1f}dB")
+        print(f"[sil-check] gap {label} {t0:.2f}-{t1:.2f}: pre-encode "
+              f"{w_txt} decoded={d_db:.1f}dB " + ("OK" if ok else "FAIL"))
+    checks["gap_silence_check"] = gap_sil
+    checks["gap_silence_ok"] = bool(sil_ok)
+    checks["decoded_abs_max"] = round(float(np.abs(m4a_st).max()), 6)
+    checks["decoded_true_peak_dbfs"] = round(
+        20 * math.log10(float(np.abs(m4a_st).max()) + 1e-12), 2)
+    checks["decoded_zero_clipping"] = bool(np.abs(m4a_st).max() < 1.0)
+    print(f"[sil-check] decoded TRUE per-channel peak = "
+          f"{checks['decoded_true_peak_dbfs']}dBFS "
+          f"(abs max {checks['decoded_abs_max']}, zero clipping: "
+          f"{checks['decoded_zero_clipping']})")
 
     # boundary gaps from the real narration speech mask
     gaps = []
@@ -855,7 +976,11 @@ def main():
         with open(os.path.join(p, name), "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
     ok_all = (all(g_["ok"] for g_ in gaps) and not overlaps
-              and checks.get("gap_hf_ok", False))
+              and checks.get("gap_hf_ok", False)
+              and checks.get("gap_silence_ok", False)
+              and checks.get("decoded_zero_clipping", False)
+              and bool(report["verify"].get("aac_peak_in_target", False))
+              and bool(report["verify"].get("aac_zero_clipping", False)))
     print("AUDIO_BUILD_OK" if ok_all else "AUDIO_BUILD_WITH_WARNINGS")
     sys.exit(0 if ok_all else 1)
 

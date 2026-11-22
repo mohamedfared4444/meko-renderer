@@ -143,3 +143,61 @@ The pre-encode mix WAV contains **mathematically zero** energy above 1.5 kHz in 
 - `download/ve2-phase4-audio/narration_mix_phase4.m4a` — clean narration + pad mix (replaced; the Phase-4 with-SFX mix remains in git history at `edee146`, and `sfx_bus_deterministic_seed987126.wav` is kept as reference of what was removed)
 - `download/ve2-phase4-audio-verify.json` — updated with `sfx_enabled: false`, gap HF check, new measurements
 - `download/ve2-phase41-caption-sweep.json` — caption/frame identity proof
+
+---
+
+# Phase 4.2 — Music pad removal ("هششش / TV-switch" fix)
+
+**Commit:** this section · **Date:** 2026-11-22 · **Parent:** `a11b509` (Phase 4.1)
+
+## User report
+
+After the Phase 4.1 SFX removal the user STILL heard a soft "هششش" between narration lines — a sound like a TV channel-switching or a TV turning off. With the SFX bus already digital silence, the only remaining non-speech source in the mix was the **warm ambient music pad**: its chord-boundary envelope ramps (1.0 s release every ~15.16 s), 0.25 Hz tremolo and 2.5 s end fade can read as a faint "TV cut" under quiet gaps. Conclusion: for this prototype the pad must go entirely.
+
+## Change set (`tools/ve2_build_audio_phase4.py`)
+
+1. `MUSIC_ENABLED = False` alongside `SFX_ENABLED = False` — the music bus gain is **exactly 0.0** in the mix (muted buses contribute IEEE-exact zero, so gap samples stay digital zero; the pad generator itself is kept for reference/history).
+2. **20 ms raised-cosine micro-fades** at every segment edge, applied on the MIX BUS ONLY (`finals[...]` untouched), so no hard level step remains at any speech onset/offset and placements/word timings cannot move.
+3. New verifications:
+   - `gap_silence_check` — every narration gap (lead-in, all 6 inter-segment gaps, tail-out) must be **MATHEMATICALLY ZERO** in the pre-encode WAV (windows start 0.10 s past the ±0.08 s trim pads) and ≤ −100 dB in the decoded m4a.
+   - AAC peak check tightened: decoded true per-channel peak must land in **[−1.90, −1.30] dBFS** (target ≈ −1.45), zero clipping by construction; ladder results logged per pass.
+   - Peak measurement fixed to TRUE per-channel decode: the first 4.2 run showed a bogus 1.106 abs-max because a mono downmix applies libswresample's 0.7071 coefficient per channel (up to +3.01 dB on correlated L/R); the file's real peak was −2.13 dBFS.
+4. Unchanged by design (md5-proven below): segment placements, word timings, `ve2-audio-timeline.json`, `timeline.js`, 2.5D frames.
+
+## Measurements (pure Enzo narration mix)
+
+| Metric | Phase 4.1 | **Phase 4.2** | Spec |
+|---|---|---|---|
+| Narration limited speech mean | −16.79 dB | **−16.80 dB** | −16.5…−18 dB ✔ |
+| Pre-encode mix peak | −1.54 dBFS | **−2.00 dBFS** | (limiter ceiling) ✔ |
+| AAC decoded peak (true per-ch) | −1.47 dBFS | **−1.48 dBFS** (abs max 0.8432) | −1.3…−1.5 dBFS, zero clipping ✔ |
+| AAC ladder choice | −0.55 dB | **−0.18 dB** (pass 3 of 6) | closest to −1.45 ✔ |
+| Ambient-gap level (volumedetect) | −34.6…−39.1 dB (music pad) | **−91.0 dB (s16 floor)** | no music ✔ |
+| Gap 1.5–19 kHz band (decoded) | −134…−140 dB | **exact zero (−240 dB reading)** | ≤ −100 dB ✔ |
+| Gap pre-encode WAV | −192…−220 dB | **EXACT ZERO (0.0)** | digital silence ✔ |
+| Mix duration / mean / max | 60.633 s / −19.3 dB / −1.9 dB | **60.633 s / −19.2 dB / −1.5 dB** | ✔ |
+
+**`AUDIO_BUILD_OK`** — boundary gaps 6/6 OK, `speech_overlaps: []`, `gap_hf_ok: true`, `gap_silence_ok: true`, `aac_peak_in_target: true`, `decoded_zero_clipping: true`. Full AAC ladder (deterministic): +0.00 → −0.56, −0.12 → −1.14, −0.18 → −1.48 ✔, −0.24 → −1.73, −0.30 → −2.13, −0.55 → −2.30 dBFS.
+
+## Identity proofs (nothing visual touched)
+
+- `ve2-audio-timeline.json` md5 **`46df7fe8…`** — byte-identical to Phase 4.1/4.0.
+- `prototype/timeline.js` md5 **`275e319a…`** — byte-identical.
+- Re-mux: video stream copied (`-c:v copy`) → video stream MD5 **`b7f3cd30…`** unchanged; **1819 frames**, 1080×1920 @30 fps, **60.633333 s**.
+- MP4 audio astats: overall peak **−1.481 dBFS** (ch1 −1.481 / ch2 −2.000 — joint-stereo mid/side quantization; overall max is the binding figure), zero clipping.
+- **determinism:** two independent builds → `narration_mix_phase4.m4a` byte-identical (md5 `878dddf7…`), verify JSON byte-identical (md5 `7d932bef…`).
+- **captionSweep** (`ve2-phase42-caption-sweep.json`): both MP4s decode 1819/1819 frames; all 6 sweep frames (caption-active 3.0/8.0/57.5, caption-free 5.5/35.5/60.4) **MD5-identical old-vs-new** → combined with the stream-level MD5 equality, captions and all burned-in visuals are provably unchanged.
+
+## Phase 4.2 files
+
+- `download/ve2-phase4-25d-enzo-sfx.mp4` — re-muxed deliverable (pure narration audio, video bit-exact)
+- `download/ve2-phase4-audio/narration_mix_phase4.m4a` — pure Enzo narration mix (md5 `878dddf7…`)
+- `download/ve2-phase4-audio-verify.json` — updated with `music_enabled: false`, `gap_silence_check`, AAC ladder, true per-channel peak
+- `download/ve2-phase42-caption-sweep.json` — frame identity proof
+- `tools/ve2_build_audio_phase4.py` — Phase 4.2 change set (docstring documents rationale)
+
+## Honest notes
+
+- The mix is now **pure narration**: no music, no SFX. If a future pass wants ambience back, the pad must be redesigned with gap-safe envelopes (e.g., level-locked under −50 dB in narration gaps, no chord-boundary ramps) — flip `MUSIC_ENABLED` only then.
+- AAC overshoot is strongly non-monotonic for this content (−0.12 dB → −1.14 dBFS but −0.30 dB → −2.13 dBFS), which is why the ladder uses 0.06 dB steps around the target.
+- Two build runs hit the sandbox's 590/600 s shell timeout at the very END of the run (log complete, `AUDIO_BUILD_OK` printed, artifacts flushed); a re-mux verification command also returned exit −9 (SIGKILL) after printing all results. No data was affected.

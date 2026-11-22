@@ -1,0 +1,63 @@
+{
+  "phase": "4.2",
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "expected_frames": 1819,
+    "decoded_old": 1819,
+    "decoded_new": 1819
+  },
+  "frames_identical_pct": 100.0,
+  "results": [
+    {
+      "t": 3.0,
+      "old_md5": "6ba650df361515735f7ef071a4329a86",
+      "new_md5": "6ba650df361515735f7ef071a4329a86",
+      "identical": true,
+      "band_mean": 33.97,
+      "ok": true
+    },
+    {
+      "t": 8.0,
+      "old_md5": "7749c5b49cd5722a10255c5718fdea6c",
+      "new_md5": "7749c5b49cd5722a10255c5718fdea6c",
+      "identical": true,
+      "band_mean": 32.36,
+      "ok": true
+    },
+    {
+      "t": 57.5,
+      "old_md5": "6665c34a8527337b8559d51397cbd7a8",
+      "new_md5": "6665c34a8527337b8559d51397cbd7a8",
+      "identical": true,
+      "band_mean": 29.3,
+      "ok": true
+    },
+    {
+      "t": 5.5,
+      "old_md5": "441e97203916fcad016fad2684ee2b61",
+      "new_md5": "441e97203916fcad016fad2684ee2b61",
+      "identical": true,
+      "band_mean": 32.6,
+      "ok": true
+    },
+    {
+      "t": 35.5,
+      "old_md5": "26fcc6a3c7c436f2c6982082a8d55c83",
+      "new_md5": "26fcc6a3c7c436f2c6982082a8d55c83",
+      "identical": true,
+      "band_mean": 32.13,
+      "ok": true
+    },
+    {
+      "t": 60.4,
+      "old_md5": "e3d5f7cee4af03288a5480d235a469b4",
+      "new_md5": "e3d5f7cee4af03288a5480d235a469b4",
+      "identical": true,
+      "band_mean": 28.65,
+      "ok": true
+    }
+  ],
+  "ok": true
+}

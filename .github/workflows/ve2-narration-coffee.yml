@@ -1,0 +1,64 @@
+name: ve2-narration-coffee
+
+# Coffee narration generation for the isolated visual-engine-2 prototype
+# (Phase 5 coffee end-to-end run): the 7 Egyptian-Arabic segments come from
+# the spec (tools/products/coffee.json), voice Enzo on gemini-3.8-flash-tts
+# with the same winning documentary-creator director's note.
+#
+# The Google API key comes ONLY from the repo secret GEMINI_API_KEY —
+# injected as an env var into the Python process, never echoed, never
+# written to logs or files. The script redacts any AIza… pattern.
+#
+# The run commits the trimmed FLAC segments + segments_report.json back to
+# THIS branch under download/ve2-narration-coffee/ so the sandbox can pull
+# them for the phase-4 audio build and the coffee video render.
+
+on:
+  push:
+    branches: [visual-engine-2-prototype]
+    paths:
+      - '.github/workflows/ve2-narration-coffee.yml'
+      - 'tools/products/coffee.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg (not preinstalled on current runners)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Generate 7 coffee narration segments (Enzo @ gemini-3.8-flash-tts, spec-driven)
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VE2_PRODUCT_SPEC: tools/products/coffee.json
+          VE2_VOICE_OUT: download/ve2-narration-coffee
+        run: |
+          python3 tools/gemini_tts_segments.py
+
+      - name: Commit coffee narration segments back to the branch
+        if: success()
+        run: |
+          git config user.name "ve2-bot"
+          git config user.email "ve2-bot@users.noreply.github.com"
+          if [ -d download/ve2-narration-coffee ] && \
+             [ -n "$(ls -A download/ve2-narration-coffee 2>/dev/null)" ]; then
+            git add download/ve2-narration-coffee/
+            if git diff --cached --quiet; then
+              echo "No new segments to commit."
+            else
+              git commit -m "add coffee narration segments seg1-seg7 (gemini-3.8-flash-tts, spec tools/products/coffee.json)"
+              git push
+            fi
+          else
+            echo "No output directory — nothing to commit."
+          fi

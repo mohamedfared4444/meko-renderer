@@ -1,0 +1,97 @@
+{
+  "phase": 5,
+  "sub_phase": "coffee-e2e",
+  "check": "coffee end-to-end run: Actions TTS -> phase-4 audio build -> scene data -> 1740-frame render -> encode -> chocolate zero-regression",
+  "date_utc": "2026-11-23T12:10:00Z",
+  "base_commit": "41922779ca9ed9e56c5e9b7a5ec241608ecd03d8",
+  "run_commits": [
+    "9011fd1 workflow ve2-narration-coffee.yml (push-triggered, key only via repo secret)",
+    "7fbdd01 ve2-bot: coffee narration segments seg1-seg7 (Actions run, pulled back into sandbox)"
+  ],
+  "safety": {
+    "branches_touched": ["visual-engine-2-prototype only"],
+    "main_core_manager_turso_vercel": "untouched",
+    "secrets": "GEMINI_API_KEY used only on the Actions runner via repo secret; nothing printed/committed; sandbox has no key material",
+    "paid_tts": "run on GitHub Actions via the new ve2-narration-coffee workflow — explicitly approved by the user in the task message"
+  },
+  "tts": {
+    "spec": "tools/products/coffee.json",
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Enzo",
+    "directive_matches_spec": true,
+    "segments": 7,
+    "all_ok": true,
+    "texts_match_spec_verbatim": true,
+    "rate": 24000,
+    "trimmed_durs_s": {"seg1": 7.0, "seg2": 6.111, "seg3": 7.506, "seg4": 7.311, "seg5": 5.937, "seg6": 7.914, "seg7": 5.399},
+    "output": "download/ve2-narration-coffee/ (7 FLAC + segments_report.json)"
+  },
+  "spec_policy_fix": {
+    "why": "validator checks structure, not narration-vs-window feasibility; first build attempt failed the engine assert tail1>=0.35: scene-1 air pool S1 = 13.5 - 6.455 - 6.060 = 0.985s cannot afford chocolate-copied lead 1.4 + g12 0.8 (tail1 was -1.215)",
+    "atempo_not_viable": "scene-1 overflow needs factor 1.143 but the engine ATEMP bounds are 1.02..1.06; seg1/seg2 internal pauses measured (tighten 0.15 keeps only 0.63s+0.085s) — insufficient",
+    "change": "tools/products/coffee.json audio_policy: lead_s 1.4 -> 0.4, gap_seg1_seg2_s 0.8 -> 0.2 (data-level only; no scene windows, banners, texts or code touched)",
+    "result_tail1": 0.385,
+    "downstream_all_pass": "seg5 needs NO atempo (pre4=1.415); all pre-cut buffers >= 0.35 and post-cut resumes >= 0.2; seg7 ends 56.625 <= 57.7"
+  },
+  "audio_build": {
+    "cmd": "python3 tools/ve2_build_audio_phase4.py --spec tools/products/coffee.json",
+    "result": "AUDIO_BUILD_OK",
+    "words": 92,
+    "duration_s": 58.0,
+    "frames": 1740,
+    "placements_s": {"seg1": 0.4, "seg2": 7.055, "seg3": 14.7, "seg4": 24.415, "seg5": 33.9, "seg6": 41.602, "seg7": 51.28},
+    "gaps": {"lead_in": 0.4, "seg1_seg2": 0.2, "tail_out": 1.375},
+    "mix": "PURE NARRATION (music+sfx buses exact 0.0, same approved design as chocolate 4.4), scale +0.60dB, decoded peak -1.41dBFS, mean -22.5dB",
+    "sil_check": "7/7 gaps EXACT ZERO pre-encode and decoded (no crackle/hiss/ticks)",
+    "timeline_json": "written x2 (sandbox download + ROOT/download); repo frozen chocolate timeline NOT touched; coffee copy archived as download/ve2-audio-timeline-coffee.json",
+    "timeline_js": "rebuilt for coffee in ROOT/scene + copied ROOT/prototype; repo prototype/timeline.js frozen copy untouched"
+  },
+  "scene_data": {
+    "render_data": "coffee product-data.js generated to ROOT/scene (chips=4, layer_banners=5, end card 4 Arabic lines) + repo download/ve2-coffee-preview/",
+    "smoke": "PAGE_ERRORS: [], banners 5, chunks 92 (coffee words), capChunks 55, all 8 machines, moldClips true"
+  },
+  "render": {
+    "cmd": "render_frames.py --start 0 --end 1739 --out ROOT/frames --workers 2",
+    "frames": 1740,
+    "files": "f00000.png .. f01739.png (1080x1920)"
+  },
+  "encode": {
+    "cmd": "VE2_TOTAL_FRAMES=1740 VE2_FINAL_NAME=ve2-phase4-25d-coffee.mp4 encode_chunks.py",
+    "chunks": 58,
+    "result": "ENCODE_OK — final video packets 1740/1740",
+    "container": "h264 + aac, duration 58.000s, size 52,167,193 bytes",
+    "mux_note": "mix copied from ROOT/output/audio/ to ROOT/output/ before mux (same manual step as the approved chocolate run)",
+    "mp4": "ROOT/output/ve2-phase4-25d-coffee.mp4; user copy at sandbox download/ve2-phase4-25d-coffee.mp4 (NOT committed — repo rule: no mp4 files)"
+  },
+  "encode_chunks_parameterization": {
+    "change": "prototype/encode_chunks.py: VE2_TOTAL_FRAMES / VE2_FINAL_NAME / VE2_ROOT env overrides — defaults identical (1819, ve2-phase4-25d-enzo-sfx.mp4), so the approved chocolate encode path is unchanged",
+    "chocolate_default_check": "defaults byte-identical to pre-change script behaviour"
+  },
+  "chocolate_zero_regression": {
+    "ab_stills": "10/10 PNG byte-identical — T0 (pre-coffee committed state) vs T1 (after coffee run + restore) at t = 1.0/16.0/20.0/27.0/38.0/46.0/50.0/55.0/57.5/59.0",
+    "determinism": "PASS (t=25/40/59 re-render hashes identical)",
+    "layout_verify": "PASS (render_frames.py --verify on restored chocolate scene)",
+    "check_chocolate": "11/11 PASS incl. frozen md5s audio_timeline 46df7fe8, narration_mix 785989aa, audio_verify 994bd9c4, timeline_js 275e319a",
+    "sandbox_frozen_files": "overwritten-by-design during coffee build, then restored from repo/snapshot — md5s re-confirmed identical (46df7fe8 / 994bd9c4 / 785989aa)",
+    "validate_x3": "chocolate PASS / coffee PASS / soap PASS",
+    "chocolate_video": "1080x1920 @ 30fps, 1819 frames, 60.633s — untouched"
+  },
+  "files_added": [
+    ".github/workflows/ve2-narration-coffee.yml",
+    "download/ve2-narration-coffee/ (7 FLAC + segments_report.json, from Actions)",
+    "download/ve2-coffee-preview/{policy.json,skeleton.json,product-data.js}",
+    "download/ve2-audio-timeline-coffee.json",
+    "download/ve2-phase4-audio-verify-coffee.json",
+    "download/ve2-phase4-audio/narration_mix_phase4-coffee.m4a",
+    "download/ve2-phase5-coffee-e2e-check.json"
+  ],
+  "files_modified": [
+    "tools/products/coffee.json (audio_policy lead/g12 retune — documented above)",
+    "prototype/encode_chunks.py (env overrides, defaults unchanged)"
+  ],
+  "mirrors_synced": [
+    "prototype-sources/phase1-v2/ (repo + sandbox)",
+    "download/ve2-engine-source/ (sandbox)"
+  ],
+  "result": "PASS"
+}

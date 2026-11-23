@@ -12,7 +12,7 @@ about a product is hardcoded in code any more.
 | الملف | الغرض |
 | --- | --- |
 | `chocolate.json` | البريسِت المعتمد (فrozen baseline) — الشوكولاتة، مخرجات Phase-4.4 المعتمدة مع md5s |
-| `coffee.json` | منتج نموذجي جديد (قهوة) — عربي مصري، نفس القالب السباعي |
+| `coffee.json` | منتج نموذجي جديد (قهوة) — عربي مصري، نفس القالب السباعي؛ **أول منتج يُشغَّل end-to-end بعد chocolate** (Phase 5 coffee-e2e: TTS عبر Actions → بناء صوت → رندر 1740 إطار → MP4؛ سجل الفحص `download/ve2-phase5-coffee-e2e-check.json`) |
 | `soap.json` | منتج نموذجي جديد (صابون) — عربي مصري، بدون caption groups |
 | `fridge.json` | منتج نموذجي جديد (ثلاجة) — عربي مصري، نفس القالب السباعي؛ مترجم من `fridge.raw.json` (طلب العميل الخام، محفوظ حرفيًا) — غير مدفوع TTS، جاهز للبناء المعزول |
 | `fridge.raw.json` | الطلب الخام للعميل كما وصل حرفيًا — مرجع فقط، لا يقرأه المدقق ولا أي Automation |
@@ -111,3 +111,6 @@ python3 tools/ve2_product_spec.py check-chocolate                        # حا�
 - `VE2_PRODUCT_SPEC` — مسار spec بديل (لـ `gemini_tts_segments.py`؛
   ولـ `ve2_build_audio_phase4.py` استخدم `--spec`)
 - `VE2_ROOT` / `VE2_DL` — تشغيل البناء على sandbox معزول للتحقق البايتي
+- `VE2_TOTAL_FRAMES` / `VE2_FINAL_NAME` — في `encode_chunks.py` (الافتراضي
+  chocolate: 1819 / `ve2-phase4-25d-enzo-sfx.mp4`؛ للقهوة 1740 /
+  `ve2-phase4-25d-coffee.mp4`)

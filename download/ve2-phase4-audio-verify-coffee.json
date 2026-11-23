@@ -1,0 +1,554 @@
+{
+  "phase": 4,
+  "sub_phase": "4.4",
+  "windows": [],
+  "processing": [
+    {
+      "id": "seg1",
+      "raw_dur": 7.0,
+      "head_strip_s": 0.0,
+      "tail_strip_s": 0.07,
+      "tail_blob_peak_dbfs": -240.0,
+      "noise_floor_db": -56.8,
+      "edge_trim": [
+        0.07,
+        0.555
+      ],
+      "end_fade_s": 0.01,
+      "locked_dur_s": 6.455,
+      "processed_dur": 6.455
+    },
+    {
+      "id": "seg2",
+      "raw_dur": 6.111,
+      "head_strip_s": 0.0,
+      "tail_strip_s": 0.0,
+      "tail_blob_peak_dbfs": null,
+      "noise_floor_db": -53.3,
+      "edge_trim": [
+        0.07,
+        0.131
+      ],
+      "end_fade_s": 0.01,
+      "locked_dur_s": 6.06,
+      "processed_dur": 6.06
+    },
+    {
+      "id": "seg3",
+      "raw_dur": 7.506,
+      "head_strip_s": 0.0,
+      "tail_strip_s": 0.0,
+      "tail_blob_peak_dbfs": null,
+      "noise_floor_db": -57.8,
+      "edge_trim": [
+        0.07,
+        0.136
+      ],
+      "end_fade_s": 0.01,
+      "locked_dur_s": 7.45,
+      "processed_dur": 7.45
+    },
+    {
+      "id": "seg4",
+      "raw_dur": 7.311,
+      "head_strip_s": 0.0,
+      "tail_strip_s": 0.0,
+      "tail_blob_peak_dbfs": null,
+      "noise_floor_db": -57.2,
+      "edge_trim": [
+        0.07,
+        0.131
+      ],
+      "pause_keep": 0.25,
+      "pause_removed": 0.04,
+      "end_fade_s": 0.01,
+      "locked_dur_s": 7.22,
+      "processed_dur": 7.22
+    },
+    {
+      "id": "seg5",
+      "raw_dur": 5.937,
+      "head_strip_s": 0.0,
+      "tail_strip_s": 0.0,
+      "tail_blob_peak_dbfs": null,
+      "noise_floor_db": -59.9,
+      "edge_trim": [
+        0.07,
+        0.132
+      ],
+      "end_fade_s": 0.01,
+      "locked_dur_s": 5.885,
+      "processed_dur": 5.885
+    },
+    {
+      "id": "seg6",
+      "raw_dur": 7.914,
+      "head_strip_s": 0.0,
+      "tail_strip_s": 0.0,
+      "tail_blob_peak_dbfs": null,
+      "noise_floor_db": -58.3,
+      "edge_trim": [
+        0.07,
+        0.134
+      ],
+      "end_fade_s": 0.01,
+      "locked_dur_s": 7.86,
+      "processed_dur": 7.86
+    },
+    {
+      "id": "seg7",
+      "raw_dur": 5.399,
+      "head_strip_s": 0.0,
+      "tail_strip_s": 0.0,
+      "tail_blob_peak_dbfs": null,
+      "noise_floor_db": -61.6,
+      "edge_trim": [
+        0.07,
+        0.134
+      ],
+      "end_fade_s": 0.01,
+      "locked_dur_s": 5.345,
+      "processed_dur": 5.345
+    }
+  ],
+  "placements": [
+    {
+      "id": "seg1",
+      "start": 0.4,
+      "end": 6.855,
+      "dur": 6.455
+    },
+    {
+      "id": "seg2",
+      "start": 7.055,
+      "end": 13.115,
+      "dur": 6.06
+    },
+    {
+      "id": "seg3",
+      "start": 14.7,
+      "end": 22.15,
+      "dur": 7.45
+    },
+    {
+      "id": "seg4",
+      "start": 24.415,
+      "end": 31.635,
+      "dur": 7.22
+    },
+    {
+      "id": "seg5",
+      "start": 33.9,
+      "end": 39.785,
+      "dur": 5.885
+    },
+    {
+      "id": "seg6",
+      "start": 41.602,
+      "end": 49.462,
+      "dur": 7.86
+    },
+    {
+      "id": "seg7",
+      "start": 51.28,
+      "end": 56.625,
+      "dur": 5.345
+    }
+  ],
+  "gaps": {
+    "seg1->seg2": 0.2,
+    "seg2->seg3": 1.585,
+    "seg3->seg4": 2.265,
+    "seg4->seg5": 2.265,
+    "seg5->seg6": 1.817,
+    "seg6->seg7": 1.818,
+    "lead_in": 0.4,
+    "tail_out": 1.375
+  },
+  "verify": {
+    "sfx_enabled": false,
+    "sfx_seed": 987126,
+    "sfx_note": "phase 4.1: procedural SFX removed per user report of crackly hiss/tick (نغمشة) between narration lines; bus = digital silence",
+    "headroom_trim_db": -5.38,
+    "raw_peak_after_staging_dbfs": 3.38,
+    "narration_limited_speech_mean_db": -21.38,
+    "narration_limited_peak_dbfs": -2.0,
+    "narration_bus_mode": "linear",
+    "compressor_enabled": false,
+    "limiter_enabled": false,
+    "headroom_ceil_dbfs": -2.0,
+    "narration_bus_note": "phase 4.3: raw gain-staged test per user report of a residual هششش / TV-switch artifact between lines; compress() + peak_limiter() disabled, bus = one static linear gain + one static headroom trim (no dynamics => no pumping)",
+    "tail_cleanup_mode": "boundary blob strip + room-tone duration lock + 10 ms end fade",
+    "tail_cleanup_note": "phase 4.4 ROOT CAUSE: Gemini TTS returns a RIFF/WAVE container with a C2PA trailer; the old generator decoded it as raw PCM, leaving a 160-305 ms -2 dBFS garbage block at every segment end (the measured inter-sentence هشش / TV-cut source). Blob stripped per segment, durations locked to the exact 4.3 sample counts, mix chain unchanged (linear staging + static headroom trim)",
+    "tail_blob_total_s": 0.07,
+    "music_enabled": false,
+    "music_gain_db": 0.0,
+    "music_note": "phase 4.2: ambient music pad muted per user report of a soft هششش / TV-switch artifact between narration lines; mix = pure narration, gaps = digital silence",
+    "mix_peak_dbfs": -2.0,
+    "aac_scale_db": 0.6,
+    "aac_decoded_peak_dbfs": -1.41,
+    "aac_ladder": [
+      {
+        "scale_db": 0.6,
+        "decoded_peak_dbfs": -1.41
+      },
+      {
+        "scale_db": 0.48,
+        "decoded_peak_dbfs": -1.52
+      },
+      {
+        "scale_db": 0.36,
+        "decoded_peak_dbfs": -1.64
+      },
+      {
+        "scale_db": 0.24,
+        "decoded_peak_dbfs": -1.76
+      },
+      {
+        "scale_db": 0.12,
+        "decoded_peak_dbfs": -1.88
+      },
+      {
+        "scale_db": 0.0,
+        "decoded_peak_dbfs": -2.0
+      },
+      {
+        "scale_db": -0.12,
+        "decoded_peak_dbfs": -2.12
+      },
+      {
+        "scale_db": -0.18,
+        "decoded_peak_dbfs": -2.18
+      }
+    ],
+    "aac_target_window_dbfs": [
+      -1.9,
+      -1.3
+    ],
+    "aac_peak_in_target": true,
+    "aac_zero_clipping": true,
+    "mix_duration": 58.0,
+    "mix_mean_db": -22.5,
+    "mix_max_db": -1.4,
+    "windows": [
+      {
+        "kind": "speech",
+        "win": [
+          0.7,
+          6.56
+        ],
+        "mean_db": -19.2,
+        "max_db": -1.4
+      },
+      {
+        "kind": "speech",
+        "win": [
+          15.2,
+          21.65
+        ],
+        "mean_db": -23.5,
+        "max_db": -3.3
+      },
+      {
+        "kind": "speech",
+        "win": [
+          24.91,
+          31.14
+        ],
+        "mean_db": -21.7,
+        "max_db": -4.2
+      },
+      {
+        "kind": "ambient",
+        "win": [
+          31.84,
+          33.2
+        ],
+        "mean_db": -91.0,
+        "max_db": -91.0
+      },
+      {
+        "kind": "speech",
+        "win": [
+          34.2,
+          39.48
+        ],
+        "mean_db": -23.3,
+        "max_db": -8.0
+      },
+      {
+        "kind": "speech",
+        "win": [
+          41.9,
+          49.16
+        ],
+        "mean_db": -20.9,
+        "max_db": -3.0
+      },
+      {
+        "kind": "ambient",
+        "win": [
+          49.66,
+          51.08
+        ],
+        "mean_db": -91.0,
+        "max_db": -91.0
+      },
+      {
+        "kind": "ambient",
+        "win": [
+          0.05,
+          0.3
+        ],
+        "mean_db": -91.0,
+        "max_db": -91.0
+      },
+      {
+        "kind": "speech",
+        "win": [
+          51.58,
+          56.33
+        ],
+        "mean_db": -21.0,
+        "max_db": -2.5
+      }
+    ],
+    "gap_hf_check": [
+      {
+        "win": [
+          31.84,
+          33.2
+        ],
+        "sfx_zone_1.5k_19k_max_db": {
+          "decoded_m4a": -240.0,
+          "preencode_wav": -240.0
+        },
+        "ok": true
+      },
+      {
+        "win": [
+          49.66,
+          51.08
+        ],
+        "sfx_zone_1.5k_19k_max_db": {
+          "decoded_m4a": -240.0,
+          "preencode_wav": -240.0
+        },
+        "ok": true
+      },
+      {
+        "win": [
+          0.05,
+          0.3
+        ],
+        "sfx_zone_1.5k_19k_max_db": {
+          "decoded_m4a": -240.0,
+          "preencode_wav": -240.0
+        },
+        "ok": true
+      }
+    ],
+    "gap_hf_ok": true,
+    "gap_silence_check": [
+      {
+        "gap": "lead_in",
+        "win": [
+          0.05,
+          0.3
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg2->seg3",
+        "win": [
+          13.21,
+          14.6
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg3->seg4",
+        "win": [
+          22.25,
+          24.31
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg4->seg5",
+        "win": [
+          31.74,
+          33.8
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg5->seg6",
+        "win": [
+          39.88,
+          41.5
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "seg6->seg7",
+        "win": [
+          49.56,
+          51.18
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      },
+      {
+        "gap": "tail_out",
+        "win": [
+          56.73,
+          60.55
+        ],
+        "preencode_wav_abs_max": 0.0,
+        "decoded_m4a_abs_max_db": -240.0,
+        "ok": true
+      }
+    ],
+    "gap_silence_ok": true,
+    "decoded_abs_max": 0.850598,
+    "decoded_true_peak_dbfs": -1.41,
+    "decoded_zero_clipping": true,
+    "boundary_gaps": [
+      {
+        "at": 13.5,
+        "label": "cut1 scene2 start",
+        "last_speech_end": 13.035,
+        "gap_s": 0.465,
+        "ok": true,
+        "next_speech_start": 14.77,
+        "resume_after_cut": 1.27
+      },
+      {
+        "at": 22.8,
+        "label": "cut2 scene3 start",
+        "last_speech_end": 22.07,
+        "gap_s": 0.73,
+        "ok": true,
+        "next_speech_start": 24.485,
+        "resume_after_cut": 1.685
+      },
+      {
+        "at": 33.4,
+        "label": "cut3 scene4 start",
+        "last_speech_end": 31.555,
+        "gap_s": 1.845,
+        "ok": true,
+        "next_speech_start": 33.97,
+        "resume_after_cut": 0.57
+      },
+      {
+        "at": 41.2,
+        "label": "cut4 scene5 start",
+        "last_speech_end": 39.705,
+        "gap_s": 1.495,
+        "ok": true,
+        "next_speech_start": 41.675,
+        "resume_after_cut": 0.475
+      },
+      {
+        "at": 51.0,
+        "label": "cut5 scene6 start",
+        "last_speech_end": 49.38,
+        "gap_s": 1.62,
+        "ok": true,
+        "next_speech_start": 51.35,
+        "resume_after_cut": 0.35
+      },
+      {
+        "at": 60.633,
+        "label": "video end",
+        "last_speech_end": 56.545,
+        "gap_s": 4.088,
+        "ok": true
+      }
+    ],
+    "segment_gaps": [
+      {
+        "from": "seg1",
+        "to": "seg2",
+        "gap_s": 0.2
+      },
+      {
+        "from": "seg2",
+        "to": "seg3",
+        "gap_s": 1.585
+      },
+      {
+        "from": "seg3",
+        "to": "seg4",
+        "gap_s": 2.265
+      },
+      {
+        "from": "seg4",
+        "to": "seg5",
+        "gap_s": 2.265
+      },
+      {
+        "from": "seg5",
+        "to": "seg6",
+        "gap_s": 1.817
+      },
+      {
+        "from": "seg6",
+        "to": "seg7",
+        "gap_s": 1.818
+      }
+    ],
+    "speech_overlaps": [],
+    "tail_energy_check": [
+      {
+        "id": "seg1",
+        "last_50ms_rms_db": -76.5,
+        "ok": true
+      },
+      {
+        "id": "seg2",
+        "last_50ms_rms_db": -72.7,
+        "ok": true
+      },
+      {
+        "id": "seg3",
+        "last_50ms_rms_db": -54.3,
+        "ok": true
+      },
+      {
+        "id": "seg4",
+        "last_50ms_rms_db": -75.1,
+        "ok": true
+      },
+      {
+        "id": "seg5",
+        "last_50ms_rms_db": -71.5,
+        "ok": true
+      },
+      {
+        "id": "seg6",
+        "last_50ms_rms_db": -73.2,
+        "ok": true
+      },
+      {
+        "id": "seg7",
+        "last_50ms_rms_db": -68.4,
+        "ok": true
+      }
+    ],
+    "tail_energy_ok": true
+  }
+}

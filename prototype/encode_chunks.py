@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """Chunked encode via python-spawned ffmpeg (survives sandbox watchdog).
 30-frame chunks, auto-retry, then lossless concat + audio mux.
-Run in background; progress written to output/encode.log (flushed)."""
+Run in background; progress written to output/encode.log (flushed).
+
+PHASE 5 coffee e2e: VE2_TOTAL_FRAMES / VE2_FINAL_NAME env overrides let the
+same script encode any product (defaults unchanged = chocolate 1819)."""
 import os, subprocess, sys
 
-ROOT = "/home/z/my-project/visual-engine-2"
+ROOT = os.environ.get("VE2_ROOT", "/home/z/my-project/visual-engine-2")
 FRAMES = os.path.join(ROOT, "frames")
 OUT = os.path.join(ROOT, "output")
-TOTAL = 1819
+TOTAL = int(os.environ.get("VE2_TOTAL_FRAMES", "1819"))
+FINAL = os.environ.get("VE2_FINAL_NAME", "ve2-phase4-25d-enzo-sfx.mp4")
 CHUNK = 30
 FPS = 30
 
@@ -75,7 +79,7 @@ def main():
         log("CONCAT FAIL " + r.stderr[-400:]); sys.exit(4)
     log("concat done")
 
-    final = os.path.join(OUT, "ve2-phase4-25d-enzo-sfx.mp4")
+    final = os.path.join(OUT, FINAL)
     r = run(["ffmpeg", "-y", "-v", "error", "-i", vpath,
              "-i", os.path.join(OUT, "narration_mix_phase4.m4a"),
              "-map", "0:v", "-map", "1:a",

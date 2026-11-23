@@ -1,0 +1,87 @@
+{
+  "cuts": {
+    "scene2": 13.5,
+    "scene3": 22.8,
+    "scene4": 33.4,
+    "scene5": 41.2,
+    "scene6": 51.0,
+    "scene7": 54.2
+  },
+  "lead": 0.4,
+  "g12": 0.2,
+  "anchor_seg5": 33.9,
+  "post5": 0.28,
+  "pause_keep": {
+    "seg1": null,
+    "seg2": null,
+    "seg3": null,
+    "seg4": 0.25,
+    "seg5": null,
+    "seg6": null,
+    "seg7": null
+  },
+  "min_precut": 0.35,
+  "min_postcut": 0.2,
+  "video_dur_exact": 58.0,
+  "duration_json": 58.0,
+  "fps": 30,
+  "frames": 1740,
+  "width": 1080,
+  "height": 1920,
+  "scenes_list": [
+    {
+      "name": "01 title over green coffee hills + cherry picking conveyor",
+      "start": 0.0,
+      "end": 13.5
+    },
+    {
+      "name": "02 washing channels & drying terraces cutaway",
+      "start": 13.5,
+      "end": 22.8
+    },
+    {
+      "name": "03 roasting drum first-crack cutaway",
+      "start": 22.8,
+      "end": 33.4
+    },
+    {
+      "name": "04 grinding burrs closeup",
+      "start": 33.4,
+      "end": 41.2
+    },
+    {
+      "name": "05 espresso extraction & crema pour",
+      "start": 41.2,
+      "end": 51.0
+    },
+    {
+      "name": "06 latte art pullback",
+      "start": 51.0,
+      "end": 54.2
+    },
+    {
+      "name": "07 final wide reveal (bean to cup)",
+      "start": 54.2,
+      "end": 58.0
+    }
+  ],
+  "groups_by_sid": {
+    "seg7": [
+      "وبكده فنجان",
+      "القهوة جاهزة",
+      "من حبة",
+      "خضرا",
+      "لكوباية",
+      "بتفتح النفس"
+    ]
+  },
+  "order": [
+    "seg1",
+    "seg2",
+    "seg3",
+    "seg4",
+    "seg5",
+    "seg6",
+    "seg7"
+  ]
+}

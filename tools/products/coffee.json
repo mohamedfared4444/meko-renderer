@@ -39,8 +39,8 @@
     { "id": "seg7", "scene": "scene6", "text": "وبكده فنجان القهوة جاهز، من حبة خضرا لكوباية بتفتح النفس.", "caption_groups": ["وبكده فنجان", "القهوة جاهزة", "من حبة", "خضرا", "لكوباية", "بتفتح النفس"] }
   ],
   "audio_policy": {
-    "lead_s": 1.4,
-    "gap_seg1_seg2_s": 0.8,
+    "lead_s": 0.4,
+    "gap_seg1_seg2_s": 0.2,
     "anchors_s": { "seg5": 33.9 },
     "post_cut_offset_s": { "seg7": 0.28 },
     "pause_keep_s": { "seg4": 0.25 },

@@ -1,7 +1,7 @@
 {
   "model": "gemini-3.8-flash-tts",
   "voice": "Enzo",
-  "generated_at_utc": "2026-11-23T11:34:34Z",
+  "generated_at_utc": "2026-11-23T12:05:08Z",
   "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: ",
   "segments": [
     {
@@ -9,63 +9,55 @@
       "text": "النهارده هنعرف قهوة الفنجان بتتعمل إزاي من الحبة الخضرا لحد كوباية سخنة.",
       "status": "OK",
       "rate": 24000,
-      "raw_dur": 7.76,
-      "dur": 7.0,
-      "size": 188669
+      "raw_dur": 6.76,
+      "dur": 6.059,
+      "size": 154303
     },
     {
       "id": "seg2",
       "text": "حبات القهوة بتنمو في المرتفعات، وبتتقطف يدوي لما تبقى حمرا زي الكرز.",
       "status": "OK",
       "rate": 24000,
-      "raw_dur": 6.52,
-      "dur": 6.111,
-      "size": 162834
+      "raw_dur": 5.56,
+      "dur": 5.245,
+      "size": 146667
     },
     {
       "id": "seg3",
       "text": "بعد القطف الحبات بتغسل كويس، وبتتنشر على سطوح خشب في الشمس لحد ما تجف تماماً.",
       "status": "OK",
       "rate": 24000,
-      "raw_dur": 7.92,
-      "dur": 7.506,
-      "size": 201998
+      "raw_dur": 7.68,
+      "dur": 7.198,
+      "size": 196768
     },
     {
       "id": "seg4",
       "text": "وبعدين الحبة الخضرا بتدخل طبلية التحميص على نار مظبوطة، وتبدأ ريحة القهوة تطلع على بره.",
       "status": "OK",
       "rate": 24000,
-      "raw_dur": 8.0,
-      "dur": 7.311,
-      "size": 201298
+      "raw_dur": 8.52,
+      "dur": 7.457,
+      "size": 204321
     },
     {
       "id": "seg5",
       "text": "وبعدين بتتطحن بين سنون حديد، على درجة الطحن اللي تناسب نوع القهوة اللي هنجهزها.",
-      "status": "OK",
-      "rate": 24000,
-      "raw_dur": 6.72,
-      "dur": 5.937,
-      "size": 155058
+      "status": "FAILED"
     },
     {
       "id": "seg6",
       "text": "البودرة بتتنضغط في البورافيلتر، والمية السخنة بتعدي بيها بضغط عالي، فيطلع إسبريسو بكريمة غنية.",
-      "status": "OK",
-      "rate": 24000,
-      "raw_dur": 8.28,
-      "dur": 7.914,
-      "size": 218928
+      "status": "FAILED"
     },
     {
       "id": "seg7",
       "text": "وبكده فنجان القهوة جاهز، من حبة خضرا لكوباية بتفتح النفس.",
       "status": "OK",
       "rate": 24000,
-      "raw_dur": 5.88,
-      "dur": 5.399,
-      "size": 144866
+      "raw_dur": 6.36,
+      "dur": 5.701,
+      "size": 156767
     }
   ]
 }

@@ -1,0 +1,71 @@
+{
+  "model": "gemini-3.8-flash-tts",
+  "voice": "Enzo",
+  "generated_at_utc": "2026-11-23T11:34:34Z",
+  "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: ",
+  "segments": [
+    {
+      "id": "seg1",
+      "text": "النهارده هنعرف قهوة الفنجان بتتعمل إزاي من الحبة الخضرا لحد كوباية سخنة.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 7.76,
+      "dur": 7.0,
+      "size": 188669
+    },
+    {
+      "id": "seg2",
+      "text": "حبات القهوة بتنمو في المرتفعات، وبتتقطف يدوي لما تبقى حمرا زي الكرز.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 6.52,
+      "dur": 6.111,
+      "size": 162834
+    },
+    {
+      "id": "seg3",
+      "text": "بعد القطف الحبات بتغسل كويس، وبتتنشر على سطوح خشب في الشمس لحد ما تجف تماماً.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 7.92,
+      "dur": 7.506,
+      "size": 201998
+    },
+    {
+      "id": "seg4",
+      "text": "وبعدين الحبة الخضرا بتدخل طبلية التحميص على نار مظبوطة، وتبدأ ريحة القهوة تطلع على بره.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 8.0,
+      "dur": 7.311,
+      "size": 201298
+    },
+    {
+      "id": "seg5",
+      "text": "وبعدين بتتطحن بين سنون حديد، على درجة الطحن اللي تناسب نوع القهوة اللي هنجهزها.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 6.72,
+      "dur": 5.937,
+      "size": 155058
+    },
+    {
+      "id": "seg6",
+      "text": "البودرة بتتنضغط في البورافيلتر، والمية السخنة بتعدي بيها بضغط عالي، فيطلع إسبريسو بكريمة غنية.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 8.28,
+      "dur": 7.914,
+      "size": 218928
+    },
+    {
+      "id": "seg7",
+      "text": "وبكده فنجان القهوة جاهز، من حبة خضرا لكوباية بتفتح النفس.",
+      "status": "OK",
+      "rate": 24000,
+      "raw_dur": 5.88,
+      "dur": 5.399,
+      "size": 144866
+    }
+  ]
+}

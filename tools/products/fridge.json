@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "product": {
+    "id": "fridge",
+    "title_ar": "إزاي الثلاجة بتبرد الأكل من جوه وهي سخنة من ورا؟",
+    "pill_ar": "من جوه لبره",
+    "title_en": "How a fridge cools your food (heat pump cutaway)",
+    "language": "ar-EG"
+  },
+  "voice": {
+    "provider": "gemini",
+    "model": "gemini-3.8-flash-tts",
+    "name": "Enzo",
+    "directive": "Speak in a captivating, warm, and natural Egyptian Arabic (Cairene Masri) voice. Sound like a top-tier documentary creator (similar to Zack D. Films or Al-Da7ee7), curious, smooth, with natural human breathing, subtle enthusiasm, and zero robotic or formal Fusha tone: "
+  },
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "frames": 1740,
+    "duration_s": 58.0
+  },
+  "scenes": [
+    { "id": "scene1", "num": "01", "label": "01 title over fridge cabin interior cutaway (cabin_interior)", "start": 0.0, "end": 8.5 },
+    { "id": "scene2", "num": "02", "label": "02 heat absorption cutaway (heat_absorption)", "start": 8.5, "end": 17.2 },
+    { "id": "scene3", "num": "03", "label": "03 compressor loop cutaway (compressor_loop)", "start": 17.2, "end": 26.0 },
+    { "id": "scene4", "num": "04", "label": "04 rear condenser flow cutaway (rear_condenser_flow)", "start": 26.0, "end": 34.8 },
+    { "id": "scene5", "num": "05", "label": "05 evaporator cooling cutaway (evaporator_cooling)", "start": 34.8, "end": 43.2 },
+    { "id": "scene6", "num": "06", "label": "06 door seal & energy visual beat (door_seal_check)", "start": 43.2, "end": 51.2 },
+    { "id": "scene7", "num": "07", "label": "07 final wide reveal + end card (summary_cutaway)", "start": 51.2, "end": 58.0 }
+  ],
+  "narration": [
+    { "id": "seg1", "scene": "scene1", "text": "النهارده هنشوف الثلاجة بتبرد الأكل من جوه إزاي", "caption_groups": null },
+    { "id": "seg2", "scene": "scene1", "text": "وليه بتبقى سخنة من ورا", "caption_groups": null },
+    { "id": "seg3", "scene": "scene2", "text": "الثلاجة مش بتصنع برودة من العدم، دي بتسحب الحرارة من جوه الأكل وتنقلها لبره.", "caption_groups": null },
+    { "id": "seg4", "scene": "scene3", "text": "الموتور بيضغط غاز التبريد فبيسخن جداً، وبيعدي على الشبكة اللي في ضهر الثلاجة.", "caption_groups": null },
+    { "id": "seg5", "scene": "scene4", "text": "في الشبكة الخلفية الحرارة بتخرج للهوا والغاز بيتحول لسائل، وده سبب سخونية ضهر الثلاجة.", "caption_groups": null },
+    { "id": "seg6", "scene": "scene5", "text": "بعدها السائل بيعدي على صمام يقلل ضغطه، فيبرد بسرعة ويمتص حرارة الأكل من تاني.", "caption_groups": null },
+    { "id": "seg7", "scene": "scene6", "text": "وبكده عرفت السر: هي مضخة حرارة بتنقل السخونة من جوه لبره طول الوقت.", "caption_groups": ["وبكده عرفت السر", "هي مضخة حرارة", "بتنقل السخونة", "من جوه لبره", "طول الوقت"] }
+  ],
+  "audio_policy": {
+    "lead_s": 1.4,
+    "gap_seg1_seg2_s": 0.8,
+    "anchors_s": { "seg5": 26.5 },
+    "post_cut_offset_s": { "seg7": 0.28 },
+    "pause_keep_s": {},
+    "min_precut_buffer_s": 0.35,
+    "min_postcut_resume_s": 0.20
+  },
+  "banners": [
+    { "num": "02", "label_ar": "سحب الحرارة للخلف", "t0": 8.5, "t1": 17.2 },
+    { "num": "03", "label_ar": "الموتور والضاغط", "t0": 17.2, "t1": 26.0 },
+    { "num": "04", "label_ar": "تكاثف وطرد الحرارة", "t0": 26.0, "t1": 34.8 },
+    { "num": "05", "label_ar": "خفض الضغط والبرودة", "t0": 34.8, "t1": 43.2 }
+  ],
+  "end_card": {
+    "line1_ar": "الثلاجة بتنقل الحرارة", "line2_ar": "مش بتخلق برودة",
+    "sub1_ar": "افتح الباب بسرعة", "sub2_ar": "وخلّي التهوية الخلفية مفتوحة"
+  },
+  "world": {
+    "layer_banners": [
+      { "key": "ROASTER", "label_ar": "الجزء العلوي — كابينة التبريد والأكل" },
+      { "key": "GRINDER", "label_ar": "الشبكة الخلفية — طرد الحرارة للغرفة" },
+      { "key": "TANK", "label_ar": "الموتور والضاغط — دفع وسيط التبريد" },
+      { "key": "FUNNEL", "label_ar": "صمام التمدد — خفض الضغط والبرودة" },
+      { "key": "TUNNEL", "label_ar": "جوان الباب — منع تسرب السخونة" }
+    ]
+  },
+  "assets": {
+    "narration_dir": "download/ve2-narration-fridge",
+    "segments_report": "segments_report.json",
+    "flac_pattern": "{id}_Enzo.flac"
+  },
+  "outputs": {
+    "audio_timeline": "download/ve2-audio-timeline.json",
+    "timeline_js": "scene/timeline.js"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0.0",
+  "product_id": "fridge",
+  "title_ar": "إزاي الثلاجة بتبرد الأكل من جوه وهي سخنة من ورا؟",
+  "language": "ar-EG",
+  "fps": 30,
+  "duration_s": 58.0,
+  "scene_style": "cutaway_25d",
+  "banners": [
+    "تبريد داخلي مستمر",
+    "سحب الحرارة للخلف",
+    "تكاثف وطرد الحرارة",
+    "توفير الطاقة والباب"
+  ],
+  "end_card": {
+    "headline": "الثلاجة بتنقل الحرارة مش بتخلق برودة",
+    "subline": "افتح الباب بسرعة وخلّي التهوية الخلفية مفتوحة",
+    "cta": "Meko Visual Engine 2.0",
+    "badge": "FRIDGE CUTAWAY"
+  },
+  "world": {
+    "layer_banners": {
+      "top_section": "الجزء العلوي — كابينة التبريد والأكل",
+      "rear_coil": "الشبكة الخلفية — طرد الحرارة للغرفة",
+      "compressor": "الموتور والضاغط — دفع وسيط التبريد",
+      "expansion": "صمام التمدد — خفض الضغط والبرودة",
+      "door_seal": "جوان الباب — منع تسرب السخونة"
+    }
+  },
+  "scenes": [
+    {
+      "id": "scene1",
+      "start_s": 1.0,
+      "end_s": 8.5,
+      "banner": "تبريد داخلي مستمر",
+      "cutaway_focus": "cabin_interior",
+      "narration": "النهارده هنشوف الثلاجة بتبرد الأكل من جوه إزاي، وليه بتبقى سخنة من ورا."
+    },
+    {
+      "id": "scene2",
+      "start_s": 8.8,
+      "end_s": 17.2,
+      "banner": "سحب الحرارة للخلف",
+      "cutaway_focus": "heat_absorption",
+      "narration": "الثلاجة مش بتصنع برودة من العدم، دي بتسحب الحرارة من جوه الأكل وتنقلها لبره."
+    },
+    {
+      "id": "scene3",
+      "start_s": 17.5,
+      "end_s": 26.0,
+      "banner": "الموتور والضاغط",
+      "cutaway_focus": "compressor_loop",
+      "narration": "الموتور بيضغط غاز التبريد فبيسخن جداً، وبيعدي على الشبكة اللي في ضهر الثلاجة."
+    },
+    {
+      "id": "scene4",
+      "start_s": 26.3,
+      "end_s": 34.8,
+      "banner": "تكاثف وطرد الحرارة",
+      "cutaway_focus": "rear_condenser_flow",
+      "narration": "في الشبكة الخلفية الحرارة بتخرج للهوا والغاز بيتحول لسائل، وده سبب سخونية ضهر الثلاجة."
+    },
+    {
+      "id": "scene5",
+      "start_s": 35.1,
+      "end_s": 43.2,
+      "banner": "خفض الضغط والبرودة",
+      "cutaway_focus": "evaporator_cooling",
+      "narration": "بعدها السائل بيعدي على صمام يقلل ضغطه، فيبرد بسرعة ويمتص حرارة الأكل من تاني."
+    },
+    {
+      "id": "scene6",
+      "start_s": 43.5,
+      "end_s": 51.2,
+      "banner": "توفير الطاقة والباب",
+      "cutaway_focus": "door_seal_check",
+      "narration": "لو سبت الباب مفتوح أو لزقت الثلاجة في الحيطة، الموتور يشتغل أكتر والكهربا تزيد."
+    },
+    {
+      "id": "scene7",
+      "start_s": 51.5,
+      "end_s": 57.6,
+      "banner": "الخلاصة",
+      "cutaway_focus": "summary_cutaway",
+      "narration": "وبكده عرفت السر: هي مضخة حرارة بتنقل السخونة من جوه لبره طول الوقت."
+    }
+  ]
+}

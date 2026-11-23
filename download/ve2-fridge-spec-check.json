@@ -1,0 +1,51 @@
+{
+  "phase": 5,
+  "sub_phase": "fridge-spec",
+  "check": "tools/products/fridge.json authored from the client raw request (preserved verbatim as fridge.raw.json) — non-paid validations + chocolate zero-regression + engine boot proof",
+  "date_utc": "2026-11-23T00:00:00Z",
+  "base_commit": "200bb9427f4a0c8514737c2e536605789771137a",
+  "files_added": [
+    "tools/products/fridge.raw.json  (client request, byte-exact, NOT machine-readable by the validator by design)",
+    "tools/products/fridge.json      (schema-compliant translation, validate/policy/skeleton/render-data PASS)",
+    "download/ve2-fridge-preview/{policy.json,skeleton.json,product-data.js}"
+  ],
+  "why_translation_was_required": "the raw request uses a different document shape than the frozen Phase-5 contract; the validator rejects it with 54 schema problems: missing required blocks product/voice/video/narration/audio_policy/assets/outputs; top-level product_id/title_ar/language/fps/duration_s/scene_style not allowed (root additionalProperties:false); schema_version must be 1; scenes need num/label/start/end (start_s/end_s/banner/cutaway_focus/narration not allowed); banners must be objects {num,label_ar,t0,t1}; end_card must be exactly the 4 Arabic lines (line1_ar/line2_ar/sub1_ar/sub2_ar) and rejects headline/subline/cta/badge; world.layer_banners must be an array keyed to machine-key anchors (^[A-Z][A-Z0-9_]*$). Semantic layer additionally enforces: contiguous windows from 0.0 to duration_s, frames=duration*fps, 7 scenes x 7 segments, seg1/seg2->scene1 + segN->scene(N-1), seg5 anchor inside scene4, seg7 post-cut offset, Arabic-script guards.",
+  "translation_mapping": {
+    "title_ar": "verbatim",
+    "product.pill_ar": "DERIVED 'من جوه لبره' from seg7 thesis (client gave none; schema requires pill under title card)",
+    "product.title_en": "DERIVED 'How a fridge cools your food (heat pump cutaway)' (schema-required metadata only)",
+    "voice": "copied verbatim from coffee.json (same Enzo TTS voice/directive)",
+    "video": "fps 30 + duration_s 58.0 verbatim; frames derived 1740 = 58x30; canvas 1080x1920 per template",
+    "scenes.windows": "client boundaries preserved; 0.3s gaps removed and scene1 pulled to 0.0 / scene7 extended to 58.0 as the contract requires contiguous windows: 0-8.5 / 8.5-17.2 / 17.2-26.0 / 26.0-34.8 / 34.8-43.2 / 43.2-51.2 / 51.2-58.0",
+    "scene labels": "English slug style; client cutaway_focus ids preserved verbatim in parentheses",
+    "narration": "scene1 text split at its own comma into seg1+seg2 (template: scene1 holds two intro segments); scene2..scene5 texts verbatim as seg3..seg6; scene7 summary text verbatim as seg7 (linked scene6, plays post-cut over the end card — coffee/chocolate pattern); scene7 caption_groups = 5 chips segmented from that text",
+    "scene6 narration (door/energy)": "NO narration slot exists in the frozen 7-segment template (scene6 is the short silent visual beat, cf. coffee latte pullback); text preserved verbatim in fridge.raw.json; its advice is echoed by the client's own end-card subline",
+    "banners (chips 02-05)": "client per-scene banner labels verbatim over scenes 2-5 windows (only combination satisfying the window+num match rule); top-level 4-string banner list preserved in raw file",
+    "end_card": "headline split into line1_ar/line2_ar and subline into sub1_ar/sub2_ar (verbatim words); cta 'Meko Visual Engine 2.0' and badge 'FRIDGE CUTAWAY' are Latin — schema end_card is closed and Arabic-guarded, so they cannot be stored; preserved verbatim in fridge.raw.json",
+    "world.layer_banners": "client Arabic labels VERBATIM; keys mapped positionally onto the five template engine anchors preserving client order: top_section->ROASTER, rear_coil->GRINDER, compressor->TANK, expansion->FUNNEL, door_seal->TUNNEL",
+    "audio_policy": "lead 1.4 (first voice shortly after client scene1 start), gap 0.8, anchor seg5 26.5 = scene4.start+0.5 (inside [26.0,34.8]), post-cut seg7 0.28, pause_keep {} (natural pauses until an approved build freezes them), min buffers copied from coffee (0.35/0.20)",
+    "assets/outputs": "narration_dir download/ve2-narration-fridge; outputs follow the coffee convention (global paths) — any fridge build MUST run isolated via VE2_ROOT/VE2_DL until approved, exactly like the chocolate rebuilds"
+  },
+  "non_paid_checks": {
+    "validate": "PASS (7 scenes / 7 segments / 58.0s @ 30fps, 1080x1920, ar-EG)",
+    "policy": "PASS — cuts 8.5/17.2/26.0/34.8/43.2/51.2, lead 1.4, g12 0.8, anchor seg5 26.5, post5 0.28, 1740 frames",
+    "skeleton": "PASS — video {58.0s, 30fps, 1740 frames, 1080x1920}; 7 scenes; segments seg1..seg7 with template scene links",
+    "render_data": "PASS — product=fridge, chips=4, layer_banners=5, end card 4 Arabic lines; generated to download/ve2-fridge-preview/product-data.js (prototype/product-data.js chocolate untouched)",
+    "paid_tts_called": false
+  },
+  "engine_boot_proof": "committed engine + chocolate timeline.js + FRIDGE product-data.js in an isolated scene dir: __ve2Ready SET, zero pageerror, fridge title + pill rendered at t=2, all 4 fridge chip labels rendered, all 5 fridge world labels rendered, VE2_PRODUCT.id=fridge",
+  "chocolate_guards_unchanged": {
+    "download/ve2-audio-timeline.json": "46df7fe817e08aa30a093b113acfa9e1",
+    "download/ve2-phase4-audio/narration_mix_phase4.m4a": "785989aaf9982571039764d183a2606c",
+    "download/ve2-phase4-audio-verify.json": "994bd9c433c74e8393527960f68da9ef",
+    "prototype/timeline.js": "275e319aa254052287528f995d7a0e74",
+    "check_chocolate": "PASS (11/11 named checks)",
+    "video": "1080x1920 @ 30fps, 1819 frames, 60.633s — untouched",
+    "validate_chocolate_coffee_soap": "PASS"
+  },
+  "notes": [
+    "validator robustness observation (NOT changed in this step): _semantic_errors assumes spec['product'] exists, so a schema-invalid spec missing the whole product block crashes with KeyError instead of a clean SpecError; all Phase-1/2 negative tests are unaffected (they keep product intact); capture via _schema_errors works cleanly — candidate guard (skip semantics when schema errors exist) for a future step",
+    "chocolate remains the active render product (prototype/product-data.js untouched)"
+  ],
+  "result": "PASS"
+}

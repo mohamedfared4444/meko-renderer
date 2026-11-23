@@ -14,6 +14,8 @@ about a product is hardcoded in code any more.
 | `chocolate.json` | البريسِت المعتمد (فrozen baseline) — الشوكولاتة، مخرجات Phase-4.4 المعتمدة مع md5s |
 | `coffee.json` | منتج نموذجي جديد (قهوة) — عربي مصري، نفس القالب السباعي |
 | `soap.json` | منتج نموذجي جديد (صابون) — عربي مصري، بدون caption groups |
+| `fridge.json` | منتج نموذجي جديد (ثلاجة) — عربي مصري، نفس القالب السباعي؛ مترجم من `fridge.raw.json` (طلب العميل الخام، محفوظ حرفيًا) — غير مدفوع TTS، جاهز للبناء المعزول |
+| `fridge.raw.json` | الطلب الخام للعميل كما وصل حرفيًا — مرجع فقط، لا يقرأه المدقق ولا أي Automation |
 | `../schemas/ve2-product-spec.schema.json` | JSON Schema (draft 2020-12) للتنسيق |
 | `../ve2_product_spec.py` | اللودر/المدقّق + اشتقاق سياسة الصوت + فحص الانحدار |
 
